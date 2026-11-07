@@ -962,7 +962,7 @@ func (app *MiyooPod) drawPowerExitWarning() {
 
 	dc.SetFontFace(app.FontTitle)
 	dc.SetHexColor("#FF4444")
-	dc.DrawStringAnchored("Keep holding to exit MiyooDrome", centerX, centerY-10, 0.5, 0.5)
+	dc.DrawStringAnchored("Keep holding to exit "+appName, centerX, centerY-10, 0.5, 0.5)
 
 	dc.SetFontFace(app.FontSmall)
 	dc.SetHexColor("#CCCCCC")

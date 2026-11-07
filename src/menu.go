@@ -9,7 +9,7 @@ import (
 )
 
 func (app *MiyooPod) buildRootMenu() *MenuScreen {
-	root := &MenuScreen{Title: "MiyooDrome"}
+	root := &MenuScreen{Title: appName}
 	local := &MenuScreen{Title: "Local library", Parent: root}
 	local.Builder = func() []*MenuItem { return app.localLibraryItems(local) }
 	settings := &MenuScreen{Title: "Settings", Parent: root}

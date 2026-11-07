@@ -56,7 +56,7 @@ func (app *MiyooPod) downloadSong(t *Track) {
 		artCtx, stop := context.WithTimeout(ctx, 8*time.Second)
 		defer stop()
 		_, _ = navcore.Cover(artCtx, c, c.MusicDir(MUSIC_ROOT), id)
-		return navTaskResult{message: "Saved to Media/Music/MiyooDrome"}
+		return navTaskResult{message: "Saved to Media/Music/" + appFolder}
 	})
 }
 func (app *MiyooPod) savedSongsMenu(root *MenuScreen) *MenuItem {

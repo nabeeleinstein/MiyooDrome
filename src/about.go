@@ -12,7 +12,7 @@ func (app *MiyooPod) showAboutScreen() {
 	dc.Clear()
 	dc.SetFontFace(app.FontTitle)
 	dc.SetHexColor(app.CurrentTheme.HeaderTxt)
-	dc.DrawStringAnchored("MiyooDrome "+APP_VERSION, SCREEN_WIDTH/2, 38, 0.5, 0.5)
+	dc.DrawStringAnchored(appName+" "+APP_VERSION+buildSuffix, SCREEN_WIDTH/2, 38, 0.5, 0.5)
 	dc.SetFontFace(app.FontSmall)
 	dc.SetHexColor(app.CurrentTheme.ItemTxt)
 	dc.DrawStringAnchored("Navidrome player maintained by nabeeleinstein", SCREEN_WIDTH/2, 85, 0.5, 0.5)

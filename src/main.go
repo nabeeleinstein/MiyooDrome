@@ -34,7 +34,7 @@ func (app *MiyooPod) Init() {
 
 	// Enable local diagnostics until saved preferences load.
 	app.LocalLogsEnabled = true
-	logMsg("INFO: Initializing MiyooDrome...")
+	logMsg("INFO: Initializing " + appName + "...")
 	logMsg("INFO: SDL init...")
 	if C.init() != 0 {
 		logMsg("FATAL: SDL init failed!")
@@ -109,7 +109,7 @@ func (app *MiyooPod) Init() {
 		logMsg(fmt.Sprintf("ERROR: Failed to generate icon: %v", err))
 	}
 
-	logMsg("INFO: MiyooDrome init OK!")
+	logMsg("INFO: " + appName + " init OK!")
 }
 
 func (app *MiyooPod) loadFonts() {
@@ -189,7 +189,7 @@ func main() {
 	installCrashHandler()
 
 	logMsg("\n\n\n-----------")
-	logMsg("INFO: MiyooDrome started!")
+	logMsg("INFO: " + appName + " started!")
 
 	app := createApp()
 	app.Init()

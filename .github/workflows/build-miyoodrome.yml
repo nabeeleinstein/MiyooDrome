@@ -1,7 +1,7 @@
 name: Build MiyooDrome for OnionOS
 on:
   push:
-    branches: [main]
+    branches: [main, test]
   pull_request:
   workflow_dispatch:
 
@@ -36,12 +36,22 @@ jobs:
           echo "CGO_CFLAGS=-O2 -I$PWD/SDL2-2.28.5/include -I$PWD/SDL2_mixer-2.6.3/include" >> "$GITHUB_ENV"
       - name: Build and verify install ZIP
         run: |
-          ARM_STRIP=llvm-strip-18 make package
-          readelf -h App/MiyooDrome/MiyooDrome | grep 'Machine:.*ARM'
-          readelf -l App/MiyooDrome/MiyooDrome | grep '/lib/ld-linux-armhf.so.3'
-          unzip -tq dist/MiyooDrome-OnionOS.zip
+          if [ "${GITHUB_HEAD_REF:-$GITHUB_REF_NAME}" = test ]; then
+            folder=MiyooDromeTest
+            binary=dist/test-bin/MiyooDrome
+            ARM_STRIP=llvm-strip-18 make package-test BUILD_ID="$(git rev-parse --short HEAD)"
+          else
+            folder=MiyooDrome
+            binary=App/MiyooDrome/MiyooDrome
+            ARM_STRIP=llvm-strip-18 make package
+          fi
+          echo "artifact=$folder-OnionOS" >> "$GITHUB_ENV"
+          readelf -h "$binary" | grep 'Machine:.*ARM'
+          readelf -l "$binary" | grep '/lib/ld-linux-armhf.so.3'
+          unzip -tq "dist/$folder-OnionOS.zip"
+          unzip -p "dist/$folder-OnionOS.zip" "App/$folder/MiyooDrome" | cmp - "$binary"
       - uses: actions/upload-artifact@v4
         with:
-          name: MiyooDrome-OnionOS
-          path: dist/MiyooDrome-OnionOS.zip
+          name: ${{ env.artifact }}
+          path: dist/${{ env.artifact }}.zip
           if-no-files-found: error

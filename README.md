@@ -2,6 +2,10 @@
 
 MiyooDrome plays music from your Navidrome server on a Wi-Fi-connected Miyoo Mini Plus running OnionOS. Songs and albums you download also play offline. MiyooDrome has its own launcher and settings under `App/MiyooDrome/` and can be installed alongside MiyooPod.
 
+## Test builds
+
+Pushes to the `test` branch produce a **MiyooDromeTest-OnionOS** install ZIP. It adds **MiyooDrome Test** alongside the stable player. For a local test build, use `make package-test` with the same toolchain as the stable build. [Test install and update instructions](INSTALL-TEST.md)
+
 ## Install and sign in
 
 1. Download the install ZIP from a successful [MiyooDrome build](https://github.com/nabeeleinstein/MiyooDrome/actions/workflows/build-miyoodrome.yml). Unpack the app into the SD card’s `App` folder. When upgrading, merge the folder to keep your existing `data/`.
