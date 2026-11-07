@@ -23,7 +23,7 @@ import (
 const (
 	MUSICBRAINZ_API_URL       = "https://musicbrainz.org/ws/2/"
 	COVERART_ARCHIVE_URL      = "https://coverartarchive.org/release/%s/front"
-	MUSICBRAINZ_USER_AGENT    = "MiyooPod/1.0.0 (https://github.com/danfragoso/miyoopod)"
+	MUSICBRAINZ_USER_AGENT    = "MiyooDrome/" + APP_VERSION + " (https://github.com/nabeeleinstein/MiyooDrome)"
 	MUSICBRAINZ_RATE_LIMIT_MS = 1000 // 1 request per second as per MusicBrainz guidelines
 )
 

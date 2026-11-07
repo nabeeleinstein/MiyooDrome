@@ -4,18 +4,14 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
-
-	"github.com/google/uuid"
 )
 
 const SETTINGS_PATH = appDataDir + "/settings.json"
 
 type Settings struct {
 	CacheLimitMiB         int    `json:"cache_limit_mib,omitempty"`
-	InstallationID        string `json:"installation_id,omitempty"`
 	Theme                 string `json:"theme,omitempty"`
 	LocalLogsEnabled      bool   `json:"local_logs_enabled,omitempty"`
-	SentryEnabled         bool   `json:"sentry_enabled,omitempty"`
 	AutoLockMinutes       *int   `json:"auto_lock_minutes,omitempty"`
 	Volume                *int   `json:"volume,omitempty"`
 	Brightness            *int   `json:"brightness,omitempty"`
@@ -35,18 +31,6 @@ func (app *MiyooPod) loadSettings() error {
 		return err
 	}
 
-	// Generate installation ID if it doesn't exist
-	if settings.InstallationID == "" {
-		settings.InstallationID = uuid.New().String()
-		logMsg(fmt.Sprintf("INFO: Generated new installation ID: %s", settings.InstallationID))
-		// Save immediately
-		app.InstallationID = settings.InstallationID
-		app.saveSettings()
-	} else {
-		app.InstallationID = settings.InstallationID
-		logMsg(fmt.Sprintf("Loaded installation ID: %s", settings.InstallationID))
-	}
-
 	if settings.CacheLimitMiB == 128 || settings.CacheLimitMiB == 256 || settings.CacheLimitMiB == 512 {
 		app.CacheLimitMiB = settings.CacheLimitMiB
 	}
@@ -55,7 +39,7 @@ func (app *MiyooPod) loadSettings() error {
 	if settings.Theme != "" {
 		for _, theme := range AllThemes() {
 			if theme.Name == settings.Theme {
-				app.setTheme(theme)
+				app.CurrentTheme = theme
 				logMsg(fmt.Sprintf("INFO: Restored theme: %s", settings.Theme))
 				break
 			}
@@ -68,14 +52,6 @@ func (app *MiyooPod) loadSettings() error {
 		logMsg("Local logs enabled")
 	} else {
 		logMsg("Local logs disabled")
-	}
-
-	// Restore Sentry preference
-	app.SentryEnabled = settings.SentryEnabled
-	if app.SentryEnabled {
-		logMsg("Developer logs (Sentry) enabled")
-	} else {
-		logMsg("Developer logs (Sentry) disabled")
 	}
 
 	// Restore auto-lock minutes (default to 3 if not set)
@@ -129,10 +105,8 @@ func (app *MiyooPod) loadSettings() error {
 func (app *MiyooPod) saveSettings() error {
 	settings := Settings{
 		CacheLimitMiB:         app.CacheLimitMiB,
-		InstallationID:        app.InstallationID,
 		Theme:                 app.CurrentTheme.Name,
 		LocalLogsEnabled:      app.LocalLogsEnabled,
-		SentryEnabled:         app.SentryEnabled,
 		AutoLockMinutes:       &app.AutoLockMinutes,
 		Volume:                &app.SystemVolume,
 		Brightness:            &app.SystemBrightness,

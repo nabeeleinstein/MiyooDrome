@@ -12,12 +12,12 @@ import (
 
 // App metadata
 const (
-	APP_VERSION     = "0.3.1"
+	APP_VERSION     = "0.3.2"
 	MIYOOPOD_AUTHOR = "Danilo Fragoso"
 	MIYOOPOD_URL    = "https://github.com/danfragoso/miyoopod"
 )
 
-// Display constants - identical to GaugeBoy
+// Native drawing resolution
 const SCREEN_WIDTH = 640
 const SCREEN_HEIGHT = 480
 
@@ -744,9 +744,7 @@ type MiyooPod struct {
 	LyricsLastActiveLRC int                 // Last active LRC index (for change detection in poller)
 
 	// Settings
-	InstallationID   string // Unique ID for this installation
-	LocalLogsEnabled bool   // Whether to write logs to file
-	SentryEnabled    bool   // Whether to send events to Sentry
+	LocalLogsEnabled bool // Whether to write logs to file
 
 	// Seek state (fast forward / rewind on Now Playing)
 	SeekHeld      bool      // Whether L/R is currently held down
@@ -774,8 +772,4 @@ type MiyooPod struct {
 	SearchAllItems  []*MenuItem // Unfiltered menu items (saved when search starts)
 	SearchMenuTitle string      // Original menu title
 
-	// Device info (detected at startup)
-	DeviceModel   string // e.g., "miyoo-mini-plus", "miyoo-mini-v4", "miyoo-mini-flip"
-	DisplayWidth  int    // Detected display width
-	DisplayHeight int    // Detected display height
 }

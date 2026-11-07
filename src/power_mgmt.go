@@ -54,8 +54,6 @@ func (app *MiyooPod) exitAppGracefully() {
 	restoreBrightness()
 	app.restoreCPUGovernor()
 
-	TrackAction("power_exit", nil)
-
 	app.Running = false
 }
 

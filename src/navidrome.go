@@ -1,14 +1,9 @@
 package main
 
-// MiyooPod native menu integration for Navidrome.
-// Navigation stays in upstream MiyooPod: A selects, B goes back.
-
 import (
 	"context"
-
 	"fmt"
 	"os"
-
 	"time"
 
 	"github.com/nabeeleinstein/MiyooDrome/navcore"
@@ -42,12 +37,10 @@ func (app *MiyooPod) navRootItem(root *MenuScreen) *MenuItem {
 		playlists.Builder = func() []*MenuItem { return app.navPlaylistItems(playlists) }
 		connection := &MenuScreen{Title: "Test connection", Parent: menu, ReloadOnOpen: true, Builder: app.navConnection}
 		items := []*MenuItem{
-			{Label: "Search", Action: app.openNavSearch},
 			{Label: "Albums", HasSubmenu: true, Submenu: albums},
 			{Label: "Artists", HasSubmenu: true, Submenu: artists},
 			{Label: "Playlists", HasSubmenu: true, Submenu: playlists},
 			{Label: "Test connection", HasSubmenu: true, Submenu: connection},
-			{Label: "Rescan offline songs", Action: func() { app.rescanLibrary() }},
 		}
 		signIn := &MenuItem{Label: "Sign in", Action: app.openSignIn}
 		if _, err := navcore.ReadConfig(navConfigPath); err != nil {

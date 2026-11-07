@@ -1,14 +1,13 @@
 package main
 
 import (
-	"encoding/json"
 	"fmt"
 	"os"
 	"syscall"
 	"time"
 )
 
-// clearAppData deletes library cache, settings, and artwork, preserving the installation UUID
+// clearAppData deletes library cache, settings, and artwork
 func (app *MiyooPod) clearAppData() {
 	dc := app.DC
 
@@ -77,9 +76,6 @@ func (app *MiyooPod) clearAppData() {
 
 // performClearAppData does the actual deletion and restarts the app
 func (app *MiyooPod) performClearAppData() {
-	// Preserve installation UUID
-	installID := app.InstallationID
-
 	// Show clearing message
 	dc := app.DC
 	dc.SetHexColor(app.CurrentTheme.BG)
@@ -102,15 +98,6 @@ func (app *MiyooPod) performClearAppData() {
 	// Delete artwork directory
 	if err := os.RemoveAll(ARTWORK_DIR); err != nil && !os.IsNotExist(err) {
 		logMsg(fmt.Sprintf("WARNING: Failed to remove artwork: %v", err))
-	}
-
-	// Write back a minimal settings file with just the UUID
-	minimalSettings := Settings{
-		InstallationID: installID,
-	}
-	data, err := json.MarshalIndent(minimalSettings, "", "  ")
-	if err == nil {
-		os.WriteFile(SETTINGS_PATH, data, 0644)
 	}
 
 	logMsg("INFO: App data cleared, restarting...")
