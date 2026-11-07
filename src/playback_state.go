@@ -11,6 +11,7 @@ const PLAYBACK_STATE_PATH = appDataDir + "/playback.json"
 
 // PlaybackState stores queue and playback position for session persistence
 type PlaybackState struct {
+	RemoteTracks map[string]*Track `json:"remote_tracks,omitempty"`
 	// Queue tracks stored as paths (resolved against library on load)
 	TrackPaths   []string   `json:"track_paths"`
 	CurrentIndex int        `json:"current_index"`
@@ -31,7 +32,11 @@ func (app *MiyooPod) savePlaybackState() {
 
 	// Build path list from queue tracks
 	paths := make([]string, len(app.Queue.Tracks))
+	remote := make(map[string]*Track)
 	for i, t := range app.Queue.Tracks {
+		if t.NavSong != nil {
+			remote[t.Path] = t
+		}
 		paths[i] = t.Path
 	}
 
@@ -54,6 +59,7 @@ func (app *MiyooPod) savePlaybackState() {
 
 	ps := PlaybackState{
 		TrackPaths:   paths,
+		RemoteTracks: remote,
 		CurrentIndex: app.Queue.CurrentIndex,
 		Position:     position,
 		Shuffle:      app.Queue.Shuffle,
@@ -99,7 +105,11 @@ func (app *MiyooPod) restorePlaybackState() {
 	tracks := make([]*Track, 0, len(ps.TrackPaths))
 	pathToNewIdx := make(map[int]int) // old index -> new index mapping
 	for oldIdx, path := range ps.TrackPaths {
-		if t, ok := app.Library.TracksByPath[path]; ok {
+		t := ps.RemoteTracks[path]
+		if t == nil {
+			t = app.Library.TracksByPath[path]
+		}
+		if t != nil {
 			pathToNewIdx[oldIdx] = len(tracks)
 			tracks = append(tracks, t)
 		}
@@ -125,8 +135,11 @@ func (app *MiyooPod) restorePlaybackState() {
 	if ps.Shuffle && len(ps.ShuffleOrder) > 0 {
 		// Remap shuffle order indices
 		newOrder := make([]int, 0, len(ps.ShuffleOrder))
-		for _, oldIdx := range ps.ShuffleOrder {
+		for position, oldIdx := range ps.ShuffleOrder {
 			if newIdx, ok := pathToNewIdx[oldIdx]; ok {
+				if position == ps.CurrentIndex {
+					app.Queue.CurrentIndex = len(newOrder)
+				}
 				newOrder = append(newOrder, newIdx)
 			}
 		}

@@ -14,7 +14,7 @@ func (app *MiyooPod) buildRootMenu() *MenuScreen {
 		Title: "MiyooDrome",
 	}
 
-	items := []*MenuItem{app.navRootItem(root)}
+	items := []*MenuItem{app.navRootItem(root), {Label: "Search", Action: app.openNavSearch}, app.downloadedMenu(root), app.savedSongsMenu(root), app.storageMenu(root)}
 
 	// Now Playing (only shown when something is playing)
 	// This will be dynamically added/removed in refreshRootMenu
@@ -178,7 +178,7 @@ func (app *MiyooPod) buildArtistMenuItems(root *MenuScreen) []*MenuItem {
 						Title:  alb.Name,
 						Parent: root,
 						Builder: func() []*MenuItem {
-							return app.buildTrackMenuItemsWithNumbers(alb.Tracks, true)
+							return app.localAlbumItems(alb)
 						},
 					}
 					albumItems = append(albumItems, &MenuItem{
@@ -187,6 +187,10 @@ func (app *MiyooPod) buildArtistMenuItems(root *MenuScreen) []*MenuItem {
 						Submenu:    trackMenu,
 						Album:      alb, // Store album reference for preview
 					})
+				}
+				if len(a.Albums) > 0 {
+					actions := []*MenuItem{{Label: "Play all songs", Action: func() { app.playLocalArtist(a, false) }}, {Label: "Shuffle artist", Action: func() { app.playLocalArtist(a, true) }}}
+					return append(actions, albumItems...)
 				}
 				return albumItems
 			},
@@ -209,7 +213,7 @@ func (app *MiyooPod) buildAlbumMenuItems(root *MenuScreen) []*MenuItem {
 			Title:  alb.Name + " - " + alb.Artist,
 			Parent: root,
 			Builder: func() []*MenuItem {
-				return app.buildTrackMenuItemsWithNumbers(alb.Tracks, true)
+				return app.localAlbumItems(alb)
 			},
 		}
 		items = append(items, &MenuItem{
@@ -461,6 +465,10 @@ func (app *MiyooPod) handleMenuKey(key Key) {
 			app.Running = false
 			return
 		}
+	case X:
+		if t := app.selectedNavSong(); t != nil {
+			app.downloadSong(t)
+		}
 	case Y:
 		// Add to queue: track, album, or all artist tracks
 		if len(current.Items) == 0 {
@@ -522,7 +530,7 @@ func (app *MiyooPod) drawMenuScreen() {
 	// Check if this is an album list (has albums in menu items)
 	isAlbumList := len(current.Items) > 0 && current.Items[0].Album != nil
 
-	if isAlbumList {
+	if isAlbumList || current.RemoteCover != nil || (len(current.Items) > 0 && current.Items[current.SelIndex].RemoteCover != nil) {
 		app.drawAlbumListWithPreview(current)
 	} else {
 		app.drawStandardMenuCached(current)
@@ -762,7 +770,13 @@ func (app *MiyooPod) drawAlbumListWithPreview(current *MenuScreen) {
 	// Draw album preview (right half)
 	if current.SelIndex >= 0 && current.SelIndex < len(current.Items) {
 		selectedItem := current.Items[current.SelIndex]
-		if selectedItem.Album != nil {
+		preview := current.RemoteCover
+		if preview == nil {
+			preview = selectedItem.RemoteCover
+		}
+		if preview != nil {
+			app.drawNavPreview(*preview, previewX, HEADER_HEIGHT+10, SCREEN_WIDTH-previewX-10)
+		} else if selectedItem.Album != nil {
 			app.drawAlbumPreview(selectedItem.Album, previewX, HEADER_HEIGHT+10, SCREEN_WIDTH-previewX-10)
 		}
 	}

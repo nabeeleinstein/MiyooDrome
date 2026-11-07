@@ -16,6 +16,7 @@ import (
 
 	"github.com/dhowden/tag"
 	"github.com/fogleman/gg"
+	"github.com/nabeeleinstein/MiyooDrome/navcore"
 )
 
 // startLibraryScan launches a background library scan, switching to the scan screen.
@@ -72,6 +73,9 @@ func (app *MiyooPod) runLibraryScan(onComplete func()) {
 		ext := strings.ToLower(filepath.Ext(path))
 		switch ext {
 		case ".mp3", ".flac", ".ogg":
+			if navcore.TemporaryTrack(MUSIC_ROOT, path) {
+				return nil
+			}
 			app.scanTrack(path)
 			fileCount++
 			app.LibScanCount = fileCount
@@ -191,6 +195,21 @@ func (app *MiyooPod) scanTrack(path string) {
 
 	// Duration and sample rate are lazy-filled on first play to speed up scanning
 
+	saved, coverPath, pinned := navcore.ReadSavedSong(MUSIC_ROOT, path)
+	if pinned {
+		track.NavSong = &saved
+		track.Offline = true
+		if saved.Title != "" {
+			track.Title = saved.Title
+		}
+		if saved.Album != "" {
+			track.Album = saved.Album
+		}
+		if saved.Artist != "" {
+			track.Artist = saved.Artist
+		}
+		track.Duration = float64(saved.Duration)
+	}
 	// Fallback: use filename as title
 	if track.Title == "" {
 		track.Title = strings.TrimSuffix(filepath.Base(path), filepath.Ext(path))
@@ -226,6 +245,11 @@ func (app *MiyooPod) scanTrack(path string) {
 	album.Tracks = append(album.Tracks, track)
 
 	// Extract art for album (first track with art wins)
+	if pinned && album.ArtPath == "" {
+		if _, err := os.Stat(coverPath); err == nil {
+			album.ArtPath = coverPath
+		}
+	}
 	if track.HasArt && album.ArtData == nil && album.ArtPath == "" && picData != nil {
 		album.ArtData = picData
 		album.ArtExt = picExt
@@ -695,6 +719,9 @@ func (app *MiyooPod) loadLibraryJSON() error {
 	// Filter out system metadata files that may be in cached library from a previous scan
 	filtered := lib.Tracks[:0]
 	for _, track := range lib.Tracks {
+		if navcore.TemporaryTrack(MUSIC_ROOT, track.Path) {
+			return fmt.Errorf("reindexing permanent music separately from playback cache")
+		}
 		if !isSystemPath(filepath.Base(track.Path)) {
 			filtered = append(filtered, track)
 		}

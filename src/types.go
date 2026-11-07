@@ -6,12 +6,13 @@ import (
 	"time"
 
 	"github.com/fogleman/gg"
+	"github.com/nabeeleinstein/MiyooDrome/navcore"
 	"golang.org/x/image/font"
 )
 
 // App metadata
 const (
-	APP_VERSION = "0.2.1"
+	APP_VERSION = "0.3.0"
 	APP_AUTHOR  = "Danilo Fragoso"
 	SUPPORT_URL = "https://github.com/danfragoso/miyoopod"
 )
@@ -448,21 +449,23 @@ func (r RepeatMode) String() string {
 // --- Music Library types ---
 
 type Track struct {
-	Path        string  `json:"path"`
-	Title       string  `json:"title"`
-	Artist      string  `json:"artist"`
-	Album       string  `json:"album"`
-	AlbumArtist string  `json:"album_artist"`
-	TrackNum    int     `json:"track_num"`
-	TrackTotal  int     `json:"track_total"`
-	DiscNum     int     `json:"disc_num"`
-	Year        int     `json:"year"`
-	Genre       string  `json:"genre"`
-	Duration    float64 `json:"duration"`
-	HasArt      bool    `json:"has_art"`
-	Bitrate     int     `json:"bitrate,omitempty"`
-	SampleRate  int     `json:"sample_rate,omitempty"`
-	Lyrics      string  `json:"lyrics,omitempty"`
+	NavSong     *navcore.Song `json:"nav_song,omitempty"`
+	Offline     bool          `json:"offline,omitempty"`
+	Path        string        `json:"path"`
+	Title       string        `json:"title"`
+	Artist      string        `json:"artist"`
+	Album       string        `json:"album"`
+	AlbumArtist string        `json:"album_artist"`
+	TrackNum    int           `json:"track_num"`
+	TrackTotal  int           `json:"track_total"`
+	DiscNum     int           `json:"disc_num"`
+	Year        int           `json:"year"`
+	Genre       string        `json:"genre"`
+	Duration    float64       `json:"duration"`
+	HasArt      bool          `json:"has_art"`
+	Bitrate     int           `json:"bitrate,omitempty"`
+	SampleRate  int           `json:"sample_rate,omitempty"`
+	Lyrics      string        `json:"lyrics,omitempty"`
 }
 
 type Album struct {
@@ -519,6 +522,8 @@ const (
 	ScreenLibraryScan
 	ScreenLyrics
 	ScreenSignIn
+	ScreenNavSearch
+	ScreenNavTask
 )
 
 func (s ScreenType) String() string {
@@ -535,6 +540,10 @@ func (s ScreenType) String() string {
 		return "library_scan"
 	case ScreenLyrics:
 		return "lyrics"
+	case ScreenNavSearch:
+		return "music_search"
+	case ScreenNavTask:
+		return "music_transfer"
 	case ScreenSignIn:
 		return "sign_in"
 	default:
@@ -543,23 +552,25 @@ func (s ScreenType) String() string {
 }
 
 type MenuItem struct {
-	Label      string
-	HasSubmenu bool
-	Action     func()
-	Submenu    *MenuScreen
-	Track      *Track
-	Album      *Album  // For album preview display
-	Artist     *Artist // For artist track queuing
+	RemoteCover *navPreview
+	Label       string
+	HasSubmenu  bool
+	Action      func()
+	Submenu     *MenuScreen
+	Track       *Track
+	Album       *Album  // For album preview display
+	Artist      *Artist // For artist track queuing
 }
 
 type MenuScreen struct {
-	Title     string
-	Items     []*MenuItem
-	SelIndex  int
-	ScrollOff int
-	Parent    *MenuScreen
-	Builder   func() []*MenuItem
-	Built     bool
+	RemoteCover  *navPreview
+	Title        string
+	Items        []*MenuItem
+	SelIndex     int
+	ScrollOff    int
+	Parent       *MenuScreen
+	Builder      func() []*MenuItem
+	Built        bool
 	ReloadOnOpen bool
 }
 
@@ -585,6 +596,11 @@ type CoverflowState struct {
 // --- Main application ---
 
 type MiyooPod struct {
+	CacheLimitMiB int
+	navQuery      string
+	navKeyboard   textKeyboard
+	navArtwork    navArtworkState
+	navTask       *navTask
 	Running       bool
 	ShouldRefresh bool
 	RefreshChan   chan struct{} // Signal channel for screen refresh
@@ -615,7 +631,7 @@ type MiyooPod struct {
 
 	// Navigation
 	CurrentScreen ScreenType
-	signIn signInForm
+	signIn        signInForm
 	MenuStack     []*MenuScreen
 	RootMenu      *MenuScreen
 
@@ -662,12 +678,12 @@ type MiyooPod struct {
 	BrightnessNeedsRestore bool // Defer brightness restore until after overlay is drawn
 
 	// Power/Display management
-	LastActivityTime     time.Time   // Last user interaction time
-	PowerButtonPressTime time.Time   // When power button was pressed (for long-hold detection)
-	PowerButtonPressed   bool        // Whether power button is currently held
-	MenuKeyPressed       bool        // Whether MENU key is currently held (for brightness control)
-	SelectKeyPressed     bool        // Whether SELECT is currently held (for combo shortcuts)
-	AutoLockMinutes      int         // Minutes of inactivity before auto-lock (0 = disabled)
+	LastActivityTime     time.Time // Last user interaction time
+	PowerButtonPressTime time.Time // When power button was pressed (for long-hold detection)
+	PowerButtonPressed   bool      // Whether power button is currently held
+	MenuKeyPressed       bool      // Whether MENU key is currently held (for brightness control)
+	SelectKeyPressed     bool      // Whether SELECT is currently held (for combo shortcuts)
+	AutoLockMinutes      int       // Minutes of inactivity before auto-lock (0 = disabled)
 
 	// CPU power management
 	KeepPerformanceOnLock bool        // If true, keep performance governor while locked (don't drop to powersave)

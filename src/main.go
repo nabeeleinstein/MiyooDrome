@@ -18,6 +18,7 @@ import (
 	"unsafe"
 
 	"github.com/fogleman/gg"
+	"github.com/nabeeleinstein/MiyooDrome/navcore"
 )
 
 func init() {
@@ -59,6 +60,7 @@ func (app *MiyooPod) Init() {
 	app.FB, _ = app.DC.Image().(*image.RGBA)
 
 	// Load fonts
+	app.CacheLimitMiB = 256
 	app.FontSize = FontSizeMedium // default; overridden by loadSettings
 	app.loadFonts()
 
@@ -203,6 +205,10 @@ func main() {
 	go app.RunUI()
 	time.Sleep(100 * time.Millisecond)
 
+	if err := navcore.CleanupInterrupted(MUSIC_ROOT); err != nil {
+		logMsg("Could not remove an interrupted download: " + err.Error())
+	}
+
 	// Load library from JSON or perform full scan
 	err := app.loadLibraryJSON()
 	if err != nil {
@@ -241,6 +247,9 @@ func main() {
 
 	// Restore saved playback state (queue, position) before building menu
 	app.restorePlaybackState()
+	if _, err := navcore.TrimCache(MUSIC_ROOT, app.cacheLimit(), app.activeMusicPath()); err != nil {
+		logMsg("Could not trim playback cache: " + err.Error())
+	}
 
 	// Build menu
 	app.RootMenu = app.buildRootMenu()
@@ -303,6 +312,7 @@ func main() {
 
 		app.pollSeek()
 		app.pollMarquee()
+		app.pollNavUpdates()
 
 		// Handle track end deferred from playback poller (avoids racing on Queue/Playing)
 		if app.TrackEndPending {
@@ -333,6 +343,9 @@ func main() {
 		time.Sleep(sleepDur)
 	}
 
+	if app.navTask != nil {
+		app.navTask.cancel()
+	}
 	// Save playback state before exit
 	app.savePlaybackState()
 
@@ -404,6 +417,16 @@ func (app *MiyooPod) handleKey(key Key) {
 		return
 	}
 
+	if app.CurrentScreen == ScreenNavTask {
+		app.handleNavTaskKey(key)
+		app.drawCurrentScreen()
+		return
+	}
+	if app.CurrentScreen == ScreenNavSearch {
+		app.handleNavSearchKey(key)
+		app.drawCurrentScreen()
+		return
+	}
 	if app.CurrentScreen == ScreenSignIn {
 		app.handleSignInKey(key)
 		app.drawCurrentScreen()
@@ -494,6 +517,11 @@ func (app *MiyooPod) handleKey(key Key) {
 
 func (app *MiyooPod) handleNowPlayingKey(key Key) {
 	switch key {
+	case Y:
+		if t := app.Playing.Track; t != nil && t.NavSong != nil && !t.Offline {
+			app.downloadSong(t)
+			app.drawCurrentScreen()
+		}
 	case LEFT, B:
 		app.setScreen(ScreenMenu)
 		app.drawCurrentScreen()
@@ -523,6 +551,10 @@ func (app *MiyooPod) handleNowPlayingKey(key Key) {
 
 func (app *MiyooPod) drawCurrentScreen() {
 	switch app.CurrentScreen {
+	case ScreenNavTask:
+		app.drawNavTask()
+	case ScreenNavSearch:
+		app.drawNavSearch()
 	case ScreenSignIn:
 		app.drawSignIn()
 	case ScreenMenu:

@@ -11,6 +11,7 @@ import (
 const SETTINGS_PATH = appDataDir + "/settings.json"
 
 type Settings struct {
+	CacheLimitMiB         int    `json:"cache_limit_mib,omitempty"`
 	InstallationID        string `json:"installation_id,omitempty"`
 	Theme                 string `json:"theme,omitempty"`
 	LocalLogsEnabled      bool   `json:"local_logs_enabled,omitempty"`
@@ -44,6 +45,10 @@ func (app *MiyooPod) loadSettings() error {
 	} else {
 		app.InstallationID = settings.InstallationID
 		logMsg(fmt.Sprintf("Loaded installation ID: %s", settings.InstallationID))
+	}
+
+	if settings.CacheLimitMiB == 128 || settings.CacheLimitMiB == 256 || settings.CacheLimitMiB == 512 {
+		app.CacheLimitMiB = settings.CacheLimitMiB
 	}
 
 	// Restore theme
@@ -123,6 +128,7 @@ func (app *MiyooPod) loadSettings() error {
 // saveSettings saves current theme and lock key preferences
 func (app *MiyooPod) saveSettings() error {
 	settings := Settings{
+		CacheLimitMiB:         app.CacheLimitMiB,
 		InstallationID:        app.InstallationID,
 		Theme:                 app.CurrentTheme.Name,
 		LocalLogsEnabled:      app.LocalLogsEnabled,

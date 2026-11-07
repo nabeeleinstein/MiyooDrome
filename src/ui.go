@@ -667,7 +667,12 @@ func (app *MiyooPod) drawStatusBar() {
 	// Left side: context-sensitive button legend
 	switch app.CurrentScreen {
 	case ScreenMenu:
-		if app.SearchActive {
+		if !app.SearchActive && app.selectedNavSong() != nil {
+			app.drawButtonLegend(12, centerY, "A", "Play")
+			app.drawButtonLegend(118, centerY, "B", "Back")
+			app.drawButtonLegend(232, centerY, "X", "Download song")
+			app.drawButtonLegend(450, centerY, "Y", "Add to queue")
+		} else if app.SearchActive {
 			app.drawButtonLegend(12, centerY, "A", "Add Char")
 			app.drawButtonLegend(140, centerY, "X", "Delete")
 			app.drawButtonLegend(250, centerY, "B", "Close")
@@ -698,7 +703,9 @@ func (app *MiyooPod) drawStatusBar() {
 		app.drawButtonLegend(110, centerY, "A", "Play/Pause")
 		app.drawButtonLegend(270, centerY, "L/R", "Prev/Next")
 		app.drawButtonLegend(400, centerY, "→", "Queue")
-		if app.Playing != nil && app.Playing.Track != nil && app.Playing.Track.Lyrics != "" {
+		if app.Playing != nil && app.Playing.Track != nil && app.Playing.Track.NavSong != nil && !app.Playing.Track.Offline {
+			app.drawButtonLegend(504, centerY, "Y", "Save")
+		} else if app.Playing != nil && app.Playing.Track != nil && app.Playing.Track.Lyrics != "" {
 			app.drawButtonLegend(510, centerY, "START", "Lyrics")
 		}
 	case ScreenQueue:
