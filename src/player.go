@@ -61,6 +61,18 @@ func (app *MiyooPod) playCurrentQueueTrack() {
 		return
 	}
 
+	if err := app.prepareNavTrack(track); err != nil {
+		app.mpvStop()
+		app.Playing.State = StateStopped
+		app.Playing.Track = nil
+		app.NPCacheDirty = true
+		app.showError(err.Error())
+		return
+	}
+
+	// A previous track may have ended while its replacement was downloading.
+	app.TrackEndPending = false
+
 	// Track song play for analytics
 	TrackSongPlayed(track)
 

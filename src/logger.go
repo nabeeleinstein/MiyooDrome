@@ -11,7 +11,7 @@ import (
 	"time"
 )
 
-const LOG_PATH = "./miyoopod.log"
+const LOG_PATH = "./miyoodrome.log"
 
 var logFile *os.File
 var globalApp *MiyooPod // Global reference for checking LocalLogsEnabled

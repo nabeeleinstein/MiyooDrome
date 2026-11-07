@@ -1,11 +1,11 @@
 package main
 
 /*
-#cgo CFLAGS: -I/root/include/SDL2 -O2 -w -D_GNU_SOURCE=1 -D_REENTRANT
-#cgo LDFLAGS: -L/root/lib -Wl,-rpath-link,/root/lib -Wl,-rpath,'$ORIGIN' -Wl,--unresolved-symbols=ignore-in-shared-libs -lSDL2 -lSDL2_mixer -lpthread
+#cgo CFLAGS: -O2 -D_GNU_SOURCE=1 -D_REENTRANT
+#cgo LDFLAGS: -L${SRCDIR}/../libs -lSDL2 -lSDL2_mixer -lpthread
 #include <stdlib.h>
-#include "main.c"
-#include "audio.c"
+#include <string.h>
+#include "native.h"
 */
 import "C"
 
@@ -18,6 +18,7 @@ import (
 	"unsafe"
 
 	"github.com/fogleman/gg"
+	"github.com/nabeeleinstein/MiyooDrome/navcore"
 )
 
 func init() {
@@ -33,7 +34,7 @@ func (app *MiyooPod) Init() {
 
 	// Default: local logs disabled
 	app.LocalLogsEnabled = true
-	app.SentryEnabled = true // Default: developer logs enabled
+	app.SentryEnabled = false
 
 	// Initialize PostHog client early so C logs during SDL init are captured
 	app.initSentry()
@@ -59,6 +60,7 @@ func (app *MiyooPod) Init() {
 	app.FB, _ = app.DC.Image().(*image.RGBA)
 
 	// Load fonts
+	app.CacheLimitMiB = 256
 	app.FontSize = FontSizeMedium // default; overridden by loadSettings
 	app.loadFonts()
 
@@ -81,7 +83,6 @@ func (app *MiyooPod) Init() {
 
 	// Power management defaults
 	app.AutoLockMinutes = 3 // Auto-lock after 3 minutes of inactivity
-	app.UpdateNotifications = true // Default: show update prompts
 	app.LastActivityTime = time.Now()
 
 	// Pre-render digit sprites for fast time display (bypass gg in hot path)
@@ -104,13 +105,6 @@ func (app *MiyooPod) Init() {
 
 	// Draw splash screen with logo (now using restored theme if available)
 	app.drawLogoSplash()
-
-	// Check for updates asynchronously (don't block startup)
-	app.VersionCheckDone = make(chan struct{})
-	go func() {
-		app.checkVersion()
-		close(app.VersionCheckDone)
-	}()
 
 	// Start power button monitor (reads directly from /dev/input/event0)
 	app.startPowerButtonMonitor()
@@ -211,6 +205,14 @@ func main() {
 	go app.RunUI()
 	time.Sleep(100 * time.Millisecond)
 
+	if err := navcore.CleanupInterrupted(MUSIC_ROOT); err != nil {
+		logMsg("Could not remove an interrupted download: " + err.Error())
+	}
+
+	if err := navcore.MigrateDownloads(MUSIC_ROOT, SHARED_MUSIC_DIR); err != nil {
+		logMsg("Could not finish moving saved music: " + err.Error())
+	}
+
 	// Load library from JSON or perform full scan
 	err := app.loadLibraryJSON()
 	if err != nil {
@@ -249,6 +251,9 @@ func main() {
 
 	// Restore saved playback state (queue, position) before building menu
 	app.restorePlaybackState()
+	if _, err := navcore.TrimCache(MUSIC_ROOT, app.cacheLimit(), app.activeMusicPath()); err != nil {
+		logMsg("Could not trim playback cache: " + err.Error())
+	}
 
 	// Build menu
 	app.RootMenu = app.buildRootMenu()
@@ -268,17 +273,6 @@ func main() {
 
 	// Draw initial menu
 	app.drawCurrentScreen()
-
-	// Check for update status from a previous OTA update
-	app.handleUpdateStatus()
-
-	// Wait for async version check to complete, then show update prompt if needed
-	go func() {
-		<-app.VersionCheckDone
-		if app.UpdateAvailable && app.UpdateNotifications && app.Running {
-			app.showUpdatePrompt()
-		}
-	}()
 
 	// Main loop: poll SDL events on main thread (required by SDL2)
 	// SDL_PollEvent MUST run on the thread that called SDL_Init (LockOSThread in init)
@@ -322,6 +316,7 @@ func main() {
 
 		app.pollSeek()
 		app.pollMarquee()
+		app.pollNavUpdates()
 
 		// Handle track end deferred from playback poller (avoids racing on Queue/Playing)
 		if app.TrackEndPending {
@@ -352,6 +347,9 @@ func main() {
 		time.Sleep(sleepDur)
 	}
 
+	if app.navTask != nil {
+		app.navTask.cancel()
+	}
 	// Save playback state before exit
 	app.savePlaybackState()
 
@@ -417,14 +415,25 @@ func (app *MiyooPod) handleKey(key Key) {
 		return
 	}
 
-	// If update prompt is showing, it consumes all keys
-	if app.handleUpdatePromptKey(key) {
-		return
-	}
-
 	// If locked, swallow all controller keys so nothing triggers accidentally.
 	// Lock/unlock is handled solely by the POWER button (see input.go).
 	if app.Locked {
+		return
+	}
+
+	if app.CurrentScreen == ScreenNavTask {
+		app.handleNavTaskKey(key)
+		app.drawCurrentScreen()
+		return
+	}
+	if app.CurrentScreen == ScreenNavSearch {
+		app.handleNavSearchKey(key)
+		app.drawCurrentScreen()
+		return
+	}
+	if app.CurrentScreen == ScreenSignIn {
+		app.handleSignInKey(key)
+		app.drawCurrentScreen()
 		return
 	}
 
@@ -512,6 +521,11 @@ func (app *MiyooPod) handleKey(key Key) {
 
 func (app *MiyooPod) handleNowPlayingKey(key Key) {
 	switch key {
+	case Y:
+		if t := app.Playing.Track; t != nil && t.NavSong != nil && !t.Offline {
+			app.downloadSong(t)
+			app.drawCurrentScreen()
+		}
 	case LEFT, B:
 		app.setScreen(ScreenMenu)
 		app.drawCurrentScreen()
@@ -541,6 +555,12 @@ func (app *MiyooPod) handleNowPlayingKey(key Key) {
 
 func (app *MiyooPod) drawCurrentScreen() {
 	switch app.CurrentScreen {
+	case ScreenNavTask:
+		app.drawNavTask()
+	case ScreenNavSearch:
+		app.drawNavSearch()
+	case ScreenSignIn:
+		app.drawSignIn()
 	case ScreenMenu:
 		app.drawMenuScreen()
 		app.drawStatusBar()
@@ -576,13 +596,6 @@ func (app *MiyooPod) drawCurrentScreen() {
 	// Draw power exit warning overlay if holding power button
 	if app.PowerExitWarning {
 		app.drawPowerExitWarning()
-	}
-
-	// Draw update prompt overlay if showing
-	if app.ShowingUpdatePrompt {
-		app.drawUpdatePromptOverlay()
-		// drawUpdatePromptOverlay calls triggerRefresh, so skip the one below
-		return
 	}
 
 	// Restore brightness now that overlay is gone (avoids bright lock overlay flash)

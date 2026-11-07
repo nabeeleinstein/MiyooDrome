@@ -1,3 +1,4 @@
+#include "native.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -105,7 +106,7 @@ int init() {
     }
 
     c_log("Creating window...");
-    window = SDL_CreateWindow("MiyooPod",
+    window = SDL_CreateWindow("MiyooDrome",
         SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED,
         display_width, display_height, SDL_WINDOW_SHOWN);
     if (!window) {

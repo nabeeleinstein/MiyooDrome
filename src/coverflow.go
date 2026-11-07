@@ -10,6 +10,10 @@ import (
 
 // DrawCoverflow renders the current album art centered on the Now Playing screen
 func (app *MiyooPod) DrawCoverflow() {
+	if t := app.Playing.Track; t != nil && t.NavSong != nil {
+		app.drawNavCover(trackPreview(t), COVER_CENTER_X, COVER_CENTER_Y, COVER_CENTER_SIZE)
+		return
+	}
 	cf := app.Coverflow
 	if cf == nil || len(cf.Albums) == 0 {
 		return

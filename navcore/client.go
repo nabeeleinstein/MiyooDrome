@@ -31,10 +31,17 @@ type Config struct {
 	MaxBitrate int    `json:"max_bitrate"`
 }
 
-func (c Config) Validate() error {
-	u, e := url.Parse(c.Server)
-	if e != nil || u.Host == "" || (u.Scheme != "http" && u.Scheme != "https") || u.User != nil || u.RawQuery != "" || u.Fragment != "" {
+func ValidateServer(server string) error {
+	u, e := url.Parse(server)
+	if e != nil || u.Hostname() == "" || (u.Scheme != "http" && u.Scheme != "https") || u.User != nil || u.ForceQuery || u.RawQuery != "" || u.Fragment != "" {
 		return errors.New("Navidrome server must be an http(s) URL without credentials or query")
+	}
+	return nil
+}
+
+func (c Config) Validate() error {
+	if err := ValidateServer(c.Server); err != nil {
+		return err
 	}
 	if strings.TrimSpace(c.Username) == "" || c.Salt == "" || len(c.Token) != 32 {
 		return errors.New("Navidrome auth missing; configure token and salt")
@@ -60,22 +67,27 @@ func ReadConfig(path string) (Config, error) {
 }
 
 type Song struct {
-	ID       string `json:"id"`
-	Title    string `json:"title"`
-	Artist   string `json:"artist"`
-	Album    string `json:"album"`
-	Duration int    `json:"duration"`
-	Track    int    `json:"track"`
-	CoverArt string `json:"coverArt"`
+	ArtistID string   `json:"artistId"`
+	Artists  []Artist `json:"artists,omitempty"`
+	AlbumID  string   `json:"albumId"`
+	Disc     int      `json:"discNumber"`
+	ID       string   `json:"id"`
+	Title    string   `json:"title"`
+	Artist   string   `json:"artist"`
+	Album    string   `json:"album"`
+	Duration int      `json:"duration"`
+	Track    int      `json:"track"`
+	CoverArt string   `json:"coverArt"`
 }
 type Artist struct {
 	ID   string `json:"id"`
 	Name string `json:"name"`
 }
 type Album struct {
-	ID     string `json:"id"`
-	Name   string `json:"name"`
-	Artist string `json:"artist"`
+	CoverArt string `json:"coverArt"`
+	ID       string `json:"id"`
+	Name     string `json:"name"`
+	Artist   string `json:"artist"`
 }
 type Playlist struct {
 	ID   string `json:"id"`
@@ -84,7 +96,8 @@ type Playlist struct {
 
 type response struct {
 	Result struct {
-		Status string `json:"status"`
+		Status string        `json:"status"`
+		Search SearchResults `json:"searchResult3"`
 		Error  struct {
 			Code    int    `json:"code"`
 			Message string `json:"message"`
@@ -234,6 +247,10 @@ func FilePath(dir, id string) string {
 	return filepath.Join(dir, hex.EncodeToString(digest[:])+".mp3")
 }
 func (c *Client) CacheSong(ctx context.Context, s Song, dir string) (string, error) {
+	return c.cacheSong(ctx, s, dir, nil)
+}
+
+func (c *Client) cacheSong(ctx context.Context, s Song, dir string, makeRoom func(int64) error) (string, error) {
 	if s.ID == "" {
 		return "", errors.New("song ID empty")
 	}
@@ -271,6 +288,15 @@ func (c *Client) CacheSong(ctx context.Context, s Song, dir string) (string, err
 	contentType := strings.ToLower(response.Header.Get("Content-Type"))
 	if strings.Contains(contentType, "json") || strings.Contains(contentType, "xml") || strings.Contains(contentType, "text/") {
 		return "", fmt.Errorf("stream returned %s, not audio", contentType)
+	}
+	if makeRoom != nil {
+		reserve := MaxTrackBytes
+		if response.ContentLength >= 0 {
+			reserve = min(MaxTrackBytes, response.ContentLength+int64(len(MakeID3Tag(s))))
+		}
+		if err := makeRoom(reserve); err != nil {
+			return "", err
+		}
 	}
 	f, e := os.CreateTemp(dir, ".navidrome-*.part")
 	if e != nil {

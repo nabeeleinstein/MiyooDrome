@@ -1,33 +1,30 @@
 package main
 
 // MiyooPod native menu integration for Navidrome.
-// This file must be added to upstream src/ and its root menu insertion applied.
 // Navigation stays in upstream MiyooPod: A selects, B goes back.
 
 import (
 	"context"
+
 	"fmt"
-	"github.com/danfragoso/miyoopod/navcore"
 	"os"
+
 	"time"
+
+	"github.com/nabeeleinstein/MiyooDrome/navcore"
 )
 
-const navCacheDir = "/mnt/SDCARD/Media/Music/NavidromeCache"
+const navConfigPath = appDataDir + "/config.json"
 
 func navClient() (*navcore.Client, error) {
-	var last error
-	for _, file := range []string{
-		"/mnt/SDCARD/App/MiyooPod/data/navidrome.json",
-		"/mnt/SDCARD/App/MiyooDrome/data/config.json", // Reuses v0.1 setup.
-	} {
-		c, err := navcore.ReadConfig(file)
-		if err != nil {
-			last = err
-			continue
-		}
-		return navcore.New(c)
+	c, err := navcore.ReadConfig(navConfigPath)
+	if os.IsNotExist(err) {
+		return nil, fmt.Errorf("Open Navidrome > Sign in to connect")
 	}
-	return nil, fmt.Errorf("config missing; copy old MiyooDrome data/config.json (last: %v)", last)
+	if err != nil {
+		return nil, err
+	}
+	return navcore.New(c)
 }
 
 func (app *MiyooPod) navError(message string) []*MenuItem {
@@ -35,23 +32,44 @@ func (app *MiyooPod) navError(message string) []*MenuItem {
 	return []*MenuItem{{Label: "Navidrome unavailable", Action: func() { app.showError(message) }}}
 }
 func (app *MiyooPod) navRootItem(root *MenuScreen) *MenuItem {
-	menu := &MenuScreen{Title: "Navidrome", Parent: root}
+	menu := &MenuScreen{ReloadOnOpen: true, Title: "Navidrome", Parent: root}
 	menu.Builder = func() []*MenuItem {
-		albums := &MenuScreen{Title: "Online Albums", Parent: menu}
+		albums := &MenuScreen{ReloadOnOpen: true, Title: "Online Albums", Parent: menu}
 		albums.Builder = func() []*MenuItem { return app.navAlbumItems(albums, 0) }
-		artists := &MenuScreen{Title: "Online Artists", Parent: menu}
+		artists := &MenuScreen{ReloadOnOpen: true, Title: "Online Artists", Parent: menu}
 		artists.Builder = func() []*MenuItem { return app.navArtistItems(artists) }
-		playlists := &MenuScreen{Title: "Online Playlists", Parent: menu}
+		playlists := &MenuScreen{ReloadOnOpen: true, Title: "Online Playlists", Parent: menu}
 		playlists.Builder = func() []*MenuItem { return app.navPlaylistItems(playlists) }
-		return []*MenuItem{
+		connection := &MenuScreen{Title: "Test connection", Parent: menu, ReloadOnOpen: true, Builder: app.navConnection}
+		items := []*MenuItem{
+			{Label: "Search", Action: app.openNavSearch},
 			{Label: "Albums", HasSubmenu: true, Submenu: albums},
 			{Label: "Artists", HasSubmenu: true, Submenu: artists},
 			{Label: "Playlists", HasSubmenu: true, Submenu: playlists},
+			{Label: "Test connection", HasSubmenu: true, Submenu: connection},
 			{Label: "Rescan offline songs", Action: func() { app.rescanLibrary() }},
 		}
+		signIn := &MenuItem{Label: "Sign in", Action: app.openSignIn}
+		if _, err := navcore.ReadConfig(navConfigPath); err != nil {
+			return append([]*MenuItem{signIn}, items...)
+		}
+		return append(items, signIn)
 	}
 	return &MenuItem{Label: "Navidrome", HasSubmenu: true, Submenu: menu}
 }
+func (app *MiyooPod) navConnection() []*MenuItem {
+	client, err := navClient()
+	if err == nil {
+		ctx, cancel := navCtx()
+		defer cancel()
+		err = client.Ping(ctx)
+	}
+	if err != nil {
+		return app.navError(err.Error())
+	}
+	return []*MenuItem{{Label: "Connected to Navidrome"}}
+}
+
 func navCtx() (context.Context, context.CancelFunc) {
 	return context.WithTimeout(context.Background(), 14*time.Second)
 }
@@ -68,13 +86,10 @@ func (app *MiyooPod) navAlbumItems(parent *MenuScreen, offset int) []*MenuItem {
 	}
 	items := make([]*MenuItem, 0, len(albums)+1)
 	for _, album := range albums {
-		a := album
-		songsMenu := &MenuScreen{Title: a.Name, Parent: parent}
-		songsMenu.Builder = func() []*MenuItem { return app.navSongs(songsMenu, a.ID, false) }
-		items = append(items, &MenuItem{Label: a.Name + " - " + a.Artist, HasSubmenu: true, Submenu: songsMenu})
+		items = append(items, app.navAlbumItem(parent, c, album))
 	}
 	if len(albums) == 100 {
-		more := &MenuScreen{Title: fmt.Sprintf("Albums %d+", offset+100), Parent: parent}
+		more := &MenuScreen{ReloadOnOpen: true, Title: fmt.Sprintf("Albums %d+", offset+100), Parent: parent}
 		more.Builder = func() []*MenuItem { return app.navAlbumItems(more, offset+100) }
 		items = append(items, &MenuItem{Label: "More albums...", HasSubmenu: true, Submenu: more})
 	}
@@ -96,36 +111,33 @@ func (app *MiyooPod) navArtistItems(parent *MenuScreen) []*MenuItem {
 	}
 	items := make([]*MenuItem, 0, len(artists))
 	for _, artist := range artists {
-		a := artist
-		menu := &MenuScreen{Title: a.Name, Parent: parent}
-		menu.Builder = func() []*MenuItem { return app.navArtistAlbums(menu, a.ID) }
-		items = append(items, &MenuItem{Label: a.Name, HasSubmenu: true, Submenu: menu})
+		items = append(items, app.navArtistItem(parent, artist))
 	}
 	if len(items) == 0 {
 		return []*MenuItem{{Label: "No artists found"}}
 	}
 	return items
 }
-func (app *MiyooPod) navArtistAlbums(parent *MenuScreen, id string) []*MenuItem {
+func (app *MiyooPod) navArtistAlbums(parent *MenuScreen, artist navcore.Artist) []*MenuItem {
 	c, e := navClient()
 	if e != nil {
 		return app.navError(e.Error())
 	}
 	ctx, cancel := navCtx()
 	defer cancel()
-	albums, e := c.ArtistAlbums(ctx, id)
+	albums, e := c.ArtistAlbums(ctx, artist.ID)
 	if e != nil {
 		return app.navError(e.Error())
 	}
-	items := make([]*MenuItem, 0, len(albums))
-	for _, album := range albums {
-		a := album
-		submenu := &MenuScreen{Title: a.Name, Parent: parent}
-		submenu.Builder = func() []*MenuItem { return app.navSongs(submenu, a.ID, false) }
-		items = append(items, &MenuItem{Label: a.Name, HasSubmenu: true, Submenu: submenu})
-	}
-	if len(items) == 0 {
+	if len(albums) == 0 {
 		return []*MenuItem{{Label: "No albums found"}}
+	}
+	items := []*MenuItem{
+		{Label: "Play all songs", Action: func() { app.navPlayArtist(c, artist, albums, false) }},
+		{Label: "Shuffle artist", Action: func() { app.navPlayArtist(c, artist, albums, true) }},
+	}
+	for _, album := range albums {
+		items = append(items, app.navAlbumItem(parent, c, album))
 	}
 	return items
 }
@@ -143,8 +155,8 @@ func (app *MiyooPod) navPlaylistItems(parent *MenuScreen) []*MenuItem {
 	items := make([]*MenuItem, 0, len(playlists))
 	for _, playlist := range playlists {
 		p := playlist
-		submenu := &MenuScreen{Title: p.Name, Parent: parent}
-		submenu.Builder = func() []*MenuItem { return app.navSongs(submenu, p.ID, true) }
+		submenu := &MenuScreen{ReloadOnOpen: true, Title: p.Name, Parent: parent}
+		submenu.Builder = func() []*MenuItem { return app.navPlaylistSongs(p.ID) }
 		items = append(items, &MenuItem{Label: p.Name, HasSubmenu: true, Submenu: submenu})
 	}
 	if len(items) == 0 {
@@ -152,52 +164,19 @@ func (app *MiyooPod) navPlaylistItems(parent *MenuScreen) []*MenuItem {
 	}
 	return items
 }
-func (app *MiyooPod) navSongs(parent *MenuScreen, id string, playlist bool) []*MenuItem {
-	c, e := navClient()
-	if e != nil {
-		return app.navError(e.Error())
+func (app *MiyooPod) navPlaylistSongs(id string) []*MenuItem {
+	c, err := navClient()
+	if err != nil {
+		return app.navError(err.Error())
 	}
 	ctx, cancel := navCtx()
 	defer cancel()
-	var songs []navcore.Song
-	if playlist {
-		songs, e = c.PlaylistSongs(ctx, id)
-	} else {
-		songs, e = c.Songs(ctx, id)
+	songs, err := c.PlaylistSongs(ctx, id)
+	if err != nil {
+		return app.navError(err.Error())
 	}
-	if e != nil {
-		return app.navError(e.Error())
+	if len(songs) == 0 {
+		return []*MenuItem{{Label: "Empty playlist"}}
 	}
-	items := make([]*MenuItem, 0, len(songs))
-	for _, song := range songs {
-		s := song
-		items = append(items, &MenuItem{Label: s.Title, Action: func() { app.navPlay(s) }})
-	}
-	if len(items) == 0 {
-		return []*MenuItem{{Label: "No songs found"}}
-	}
-	return items
-}
-func (app *MiyooPod) navPlay(s navcore.Song) {
-	c, e := navClient()
-	if e != nil {
-		app.showError(e.Error())
-		return
-	}
-	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
-	defer cancel()
-	// Download/cache the full MP3 before playback: MiyooPod's SDL2_mixer
-	// accepts local files, not live HTTP streams. This avoids the FFplay bug.
-	dest, e := c.CacheSong(ctx, s, navCacheDir)
-	if e != nil {
-		app.showError("Download failed: " + e.Error())
-		return
-	}
-	fileInfo, e := os.Stat(dest)
-	if e != nil || fileInfo.IsDir() {
-		app.showError("Cached file missing")
-		return
-	}
-	track := &Track{Path: dest, Title: s.Title, Artist: s.Artist, Album: s.Album, AlbumArtist: s.Artist, TrackNum: s.Track, Duration: float64(s.Duration)}
-	app.playTrackFromList([]*Track{track}, 0)
+	return app.buildTrackMenuItems(navTracks(c.MusicDir(MUSIC_ROOT), songs, false))
 }

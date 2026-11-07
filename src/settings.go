@@ -8,15 +8,15 @@ import (
 	"github.com/google/uuid"
 )
 
-const SETTINGS_PATH = "/mnt/SDCARD/Media/Music/.miyoopod_settings.json"
+const SETTINGS_PATH = appDataDir + "/settings.json"
 
 type Settings struct {
+	CacheLimitMiB         int    `json:"cache_limit_mib,omitempty"`
 	InstallationID        string `json:"installation_id,omitempty"`
 	Theme                 string `json:"theme,omitempty"`
 	LocalLogsEnabled      bool   `json:"local_logs_enabled,omitempty"`
 	SentryEnabled         bool   `json:"sentry_enabled,omitempty"`
 	AutoLockMinutes       *int   `json:"auto_lock_minutes,omitempty"`
-	UpdateNotifications   *bool  `json:"update_notifications,omitempty"`
 	Volume                *int   `json:"volume,omitempty"`
 	Brightness            *int   `json:"brightness,omitempty"`
 	FontSize              *int   `json:"font_size,omitempty"`
@@ -45,6 +45,10 @@ func (app *MiyooPod) loadSettings() error {
 	} else {
 		app.InstallationID = settings.InstallationID
 		logMsg(fmt.Sprintf("Loaded installation ID: %s", settings.InstallationID))
+	}
+
+	if settings.CacheLimitMiB == 128 || settings.CacheLimitMiB == 256 || settings.CacheLimitMiB == 512 {
+		app.CacheLimitMiB = settings.CacheLimitMiB
 	}
 
 	// Restore theme
@@ -85,16 +89,6 @@ func (app *MiyooPod) loadSettings() error {
 	}
 	// else keep default value (3 minutes)
 
-	// Restore update notifications preference (default to true if not set)
-	if settings.UpdateNotifications != nil {
-		app.UpdateNotifications = *settings.UpdateNotifications
-		if app.UpdateNotifications {
-			logMsg("Update notifications enabled")
-		} else {
-			logMsg("Update notifications disabled")
-		}
-	}
-
 	// Restore volume (default 50 if not set)
 	if settings.Volume != nil {
 		app.SystemVolume = *settings.Volume
@@ -134,12 +128,12 @@ func (app *MiyooPod) loadSettings() error {
 // saveSettings saves current theme and lock key preferences
 func (app *MiyooPod) saveSettings() error {
 	settings := Settings{
+		CacheLimitMiB:         app.CacheLimitMiB,
 		InstallationID:        app.InstallationID,
 		Theme:                 app.CurrentTheme.Name,
 		LocalLogsEnabled:      app.LocalLogsEnabled,
 		SentryEnabled:         app.SentryEnabled,
 		AutoLockMinutes:       &app.AutoLockMinutes,
-		UpdateNotifications:   &app.UpdateNotifications,
 		Volume:                &app.SystemVolume,
 		Brightness:            &app.SystemBrightness,
 		FontSize:              &app.FontSize,

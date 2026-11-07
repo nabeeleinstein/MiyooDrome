@@ -6,62 +6,29 @@ import (
 	"github.com/skip2/go-qrcode"
 )
 
-// showAboutScreen displays the about page with version info, credits, and donation QR code
 func (app *MiyooPod) showAboutScreen() {
 	dc := app.DC
-
-	// Set background
 	dc.SetHexColor(app.CurrentTheme.BG)
 	dc.Clear()
-
-	// Title
 	dc.SetFontFace(app.FontTitle)
 	dc.SetHexColor(app.CurrentTheme.HeaderTxt)
-	dc.DrawStringAnchored("About MiyooPod", SCREEN_WIDTH/2, 30, 0.5, 0.5)
-
-	// Version and author info
-	dc.SetFontFace(app.FontMenu)
+	dc.DrawStringAnchored("MiyooDrome "+APP_VERSION, SCREEN_WIDTH/2, 38, 0.5, 0.5)
+	dc.SetFontFace(app.FontSmall)
 	dc.SetHexColor(app.CurrentTheme.ItemTxt)
-
-	yPos := 80
-	dc.DrawStringAnchored("Version: "+APP_VERSION, SCREEN_WIDTH/2, float64(yPos), 0.5, 0.5)
-
-	yPos += 30
-	dc.DrawStringAnchored("Created by: "+APP_AUTHOR, SCREEN_WIDTH/2, float64(yPos), 0.5, 0.5)
-
-	yPos += 40
+	dc.DrawStringAnchored("Navidrome player maintained by nabeeleinstein", SCREEN_WIDTH/2, 85, 0.5, 0.5)
+	dc.SetFontFace(app.FontMenu)
+	dc.DrawStringAnchored("Based on MiyooPod by "+MIYOOPOD_AUTHOR, SCREEN_WIDTH/2, 146, 0.5, 0.5)
 	dc.SetFontFace(app.FontSmall)
-	dc.SetHexColor(app.CurrentTheme.Dim)
-	dc.DrawStringAnchored("A music player for Miyoo Mini", SCREEN_WIDTH/2, float64(yPos), 0.5, 0.5)
-
-	yPos += 20
-	dc.DrawStringAnchored("Inspired by classic music players", SCREEN_WIDTH/2, float64(yPos), 0.5, 0.5)
-
-	// Generate QR code
-	qr, err := qrcode.New(SUPPORT_URL, qrcode.Medium)
-	if err == nil {
-		qrSize := 150
-		qrImg := qr.Image(qrSize)
-
-		// Draw QR code
-		qrX := (SCREEN_WIDTH - qrSize) / 2
-		qrY := 220
-		app.fastBlitImage(qrImg, qrX, qrY)
-
-		// QR code label
-		dc.SetFontFace(app.FontSmall)
-		dc.SetHexColor(app.CurrentTheme.ItemTxt)
-		dc.DrawStringAnchored("Support this project", SCREEN_WIDTH/2, float64(qrY+qrSize+20), 0.5, 0.5)
+	dc.DrawStringAnchored("Original interface, controls and playback engine", SCREEN_WIDTH/2, 183, 0.5, 0.5)
+	dc.DrawStringAnchored("Copyright 2026 Danilo Fragoso · MIT License", SCREEN_WIDTH/2, 214, 0.5, 0.5)
+	if qr, err := qrcode.New(MIYOOPOD_URL, qrcode.Medium); err == nil {
+		const size = 140
+		app.fastBlitImage(qr.Image(size), (SCREEN_WIDTH-size)/2, 240)
 	}
-
-	// Instructions
-	dc.SetFontFace(app.FontSmall)
+	dc.DrawStringAnchored("github.com/danfragoso/miyoopod", SCREEN_WIDTH/2, 402, 0.5, 0.5)
 	dc.SetHexColor(app.CurrentTheme.Dim)
 	dc.DrawStringAnchored("Press B to return", SCREEN_WIDTH/2, SCREEN_HEIGHT-20, 0.5, 0.5)
-
 	app.triggerRefresh()
-
-	// Wait for B button to return
 	app.waitForAboutExit()
 }
 
