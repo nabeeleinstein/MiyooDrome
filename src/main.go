@@ -404,6 +404,12 @@ func (app *MiyooPod) handleKey(key Key) {
 		return
 	}
 
+	if app.CurrentScreen == ScreenSignIn {
+		app.handleSignInKey(key)
+		app.drawCurrentScreen()
+		return
+	}
+
 	// If search panel is active, it consumes most keys
 	if app.SearchActive && app.handleSearchKey(key) {
 		return
@@ -517,6 +523,8 @@ func (app *MiyooPod) handleNowPlayingKey(key Key) {
 
 func (app *MiyooPod) drawCurrentScreen() {
 	switch app.CurrentScreen {
+	case ScreenSignIn:
+		app.drawSignIn()
 	case ScreenMenu:
 		app.drawMenuScreen()
 		app.drawStatusBar()

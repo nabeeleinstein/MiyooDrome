@@ -5,17 +5,22 @@ package main
 
 import (
 	"context"
+	"crypto/sha256"
 	"fmt"
 	"os"
+	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/nabeeleinstein/MiyooDrome/navcore"
 )
 
+const navConfigPath = appDataDir + "/config.json"
+
 func navClient() (*navcore.Client, error) {
-	c, err := navcore.ReadConfig(appDataDir + "/config.json")
+	c, err := navcore.ReadConfig(navConfigPath)
 	if os.IsNotExist(err) {
-		return nil, fmt.Errorf("Run configure.py on your computer to set up MiyooDrome")
+		return nil, fmt.Errorf("Open Navidrome > Sign in to connect")
 	}
 	if err != nil {
 		return nil, err
@@ -37,13 +42,18 @@ func (app *MiyooPod) navRootItem(root *MenuScreen) *MenuItem {
 		playlists := &MenuScreen{ReloadOnOpen: true, Title: "Online Playlists", Parent: menu}
 		playlists.Builder = func() []*MenuItem { return app.navPlaylistItems(playlists) }
 		connection := &MenuScreen{Title: "Test connection", Parent: menu, ReloadOnOpen: true, Builder: app.navConnection}
-		return []*MenuItem{
+		items := []*MenuItem{
 			{Label: "Albums", HasSubmenu: true, Submenu: albums},
 			{Label: "Artists", HasSubmenu: true, Submenu: artists},
 			{Label: "Playlists", HasSubmenu: true, Submenu: playlists},
 			{Label: "Test connection", HasSubmenu: true, Submenu: connection},
 			{Label: "Rescan offline songs", Action: func() { app.rescanLibrary() }},
 		}
+		signIn := &MenuItem{Label: "Sign in", Action: app.openSignIn}
+		if _, err := navcore.ReadConfig(navConfigPath); err != nil {
+			return append([]*MenuItem{signIn}, items...)
+		}
+		return append(items, signIn)
 	}
 	return &MenuItem{Label: "Navidrome", HasSubmenu: true, Submenu: menu}
 }
@@ -196,7 +206,10 @@ func (app *MiyooPod) navPlay(s navcore.Song) {
 	defer cancel()
 	// Download/cache the full MP3 before playback: MiyooPod's SDL2_mixer
 	// accepts local files, not live HTTP streams. This avoids the FFplay bug.
-	dest, e := c.CacheSong(ctx, s, MUSIC_ROOT)
+	// Song IDs are scoped to the server. Keep downloads separate when the login changes.
+	account := sha256.Sum256([]byte(strings.TrimRight(c.Config.Server, "/") + "\x00" + c.Config.Username))
+	dir := filepath.Join(MUSIC_ROOT, fmt.Sprintf("%x", account))
+	dest, e := c.CacheSong(ctx, s, dir)
 	if e != nil {
 		app.showError("Download failed: " + e.Error())
 		return

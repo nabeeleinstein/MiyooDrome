@@ -31,10 +31,17 @@ type Config struct {
 	MaxBitrate int    `json:"max_bitrate"`
 }
 
-func (c Config) Validate() error {
-	u, e := url.Parse(c.Server)
-	if e != nil || u.Host == "" || (u.Scheme != "http" && u.Scheme != "https") || u.User != nil || u.RawQuery != "" || u.Fragment != "" {
+func ValidateServer(server string) error {
+	u, e := url.Parse(server)
+	if e != nil || u.Hostname() == "" || (u.Scheme != "http" && u.Scheme != "https") || u.User != nil || u.ForceQuery || u.RawQuery != "" || u.Fragment != "" {
 		return errors.New("Navidrome server must be an http(s) URL without credentials or query")
+	}
+	return nil
+}
+
+func (c Config) Validate() error {
+	if err := ValidateServer(c.Server); err != nil {
+		return err
 	}
 	if strings.TrimSpace(c.Username) == "" || c.Salt == "" || len(c.Token) != 32 {
 		return errors.New("Navidrome auth missing; configure token and salt")

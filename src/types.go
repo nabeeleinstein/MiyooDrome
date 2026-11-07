@@ -11,7 +11,7 @@ import (
 
 // App metadata
 const (
-	APP_VERSION = "0.2.0"
+	APP_VERSION = "0.2.1"
 	APP_AUTHOR  = "Danilo Fragoso"
 	SUPPORT_URL = "https://github.com/danfragoso/miyoopod"
 )
@@ -518,6 +518,7 @@ const (
 	ScreenAlbumArt
 	ScreenLibraryScan
 	ScreenLyrics
+	ScreenSignIn
 )
 
 func (s ScreenType) String() string {
@@ -534,6 +535,8 @@ func (s ScreenType) String() string {
 		return "library_scan"
 	case ScreenLyrics:
 		return "lyrics"
+	case ScreenSignIn:
+		return "sign_in"
 	default:
 		return "unknown"
 	}
@@ -612,6 +615,7 @@ type MiyooPod struct {
 
 	// Navigation
 	CurrentScreen ScreenType
+	signIn signInForm
 	MenuStack     []*MenuScreen
 	RootMenu      *MenuScreen
 
