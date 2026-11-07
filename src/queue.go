@@ -8,7 +8,7 @@ func (app *MiyooPod) isTrackInQueue(track *Track) bool {
 		return false
 	}
 	for _, t := range app.Queue.Tracks {
-		if t.Path == track.Path {
+		if t.Path == track.Path || (t.NavSong != nil && track.NavSong != nil && t.NavSong.ID == track.NavSong.ID && t.navDir() == track.navDir()) {
 			return true
 		}
 	}
@@ -227,6 +227,10 @@ func (app *MiyooPod) clearQueue() {
 		app.Playing.State = StateStopped
 	}
 	app.QueueScrollOffset = 0
+	if app.Playing != nil {
+		app.Playing.Track = nil
+		app.Playing.Position = 0
+	}
 	app.NPCacheDirty = true
 	app.drawCurrentScreen()
 }

@@ -55,12 +55,19 @@ func (app *MiyooPod) clearAppData() {
 	// Wait for user input
 	for app.Running {
 		key := Key(C_GetKeyPress())
+		if key < -1 && -key-1 == app.heldMenuKey {
+			app.heldMenuKey = NONE
+		}
 		if key == NONE {
 			time.Sleep(33 * time.Millisecond)
 			continue
 		}
 
 		switch key {
+		case R2:
+			app.openPlayer()
+			app.drawCurrentScreen()
+			return
 		case A:
 			app.performClearAppData()
 			return

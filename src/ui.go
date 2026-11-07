@@ -667,35 +667,17 @@ func (app *MiyooPod) drawStatusBar() {
 	// Left side: context-sensitive button legend
 	switch app.CurrentScreen {
 	case ScreenMenu:
-		if !app.SearchActive && app.selectedNavSong() != nil {
+		if app.selectedNavSong() != nil {
 			app.drawButtonLegend(12, centerY, "A", "Play")
 			app.drawButtonLegend(118, centerY, "B", "Back")
 			app.drawButtonLegend(232, centerY, "X", "Download song")
 			app.drawButtonLegend(450, centerY, "Y", "Add to queue")
-		} else if app.SearchActive {
-			app.drawButtonLegend(12, centerY, "A", "Add Char")
-			app.drawButtonLegend(140, centerY, "X", "Delete")
-			app.drawButtonLegend(250, centerY, "B", "Close")
 		} else {
 			app.drawButtonLegend(12, centerY, "A", "Select")
-			app.drawButtonLegend(130, centerY, "B", "Back")
-			if app.Playing != nil && app.Playing.State != StateStopped {
-				app.drawButtonLegend(235, centerY, "START", "Now Playing")
-			}
-			// Show search hint and "Add to Queue" on searchable lists
+			app.drawButtonLegend(132, centerY, "B", "Back")
+			app.drawButtonLegend(253, centerY, "R2", "Now Playing")
 			if app.isSearchableMenu() {
-				app.drawButtonLegend(480, centerY, "SEL", "Search")
-			}
-			if len(app.MenuStack) > 0 {
-				current := app.MenuStack[len(app.MenuStack)-1]
-				if len(current.Items) > 0 {
-					firstItem := current.Items[0]
-					if firstItem.Track != nil || firstItem.Album != nil || firstItem.Artist != nil {
-						if app.Playing == nil || app.Playing.State == StateStopped {
-							app.drawButtonLegend(360, centerY, "Y", "Add to Q")
-						}
-					}
-				}
+				app.drawButtonLegend(493, centerY, "SEL", "Search")
 			}
 		}
 	case ScreenNowPlaying:

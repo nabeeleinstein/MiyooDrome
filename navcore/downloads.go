@@ -16,8 +16,9 @@ import (
 // Version 0.3.0 pins contain just the embedded Song fields.
 type downloadPin struct {
 	Song
-	Filename string `json:"filename,omitempty"`
-	Pending  bool   `json:"pending,omitempty"`
+	Filename   string `json:"filename,omitempty"`
+	Standalone bool   `json:"standalone,omitempty"`
+	Pending    bool   `json:"pending,omitempty"`
 }
 
 func readPin(private, id string) (downloadPin, error) {
@@ -151,6 +152,10 @@ func publish(private, shared string, p downloadPin) error {
 }
 
 func (c *Client) SaveSong(ctx context.Context, root, shared string, s Song) error {
+	return c.saveSong(ctx, root, shared, s, true)
+}
+
+func (c *Client) saveSong(ctx context.Context, root, shared string, s Song, standalone bool) error {
 	storageMu.Lock()
 	defer storageMu.Unlock()
 	private := FilePath(c.MusicDir(root), s.ID)
@@ -158,6 +163,11 @@ func (c *Client) SaveSong(ctx context.Context, root, shared string, s Song) erro
 	if err != nil && !os.IsNotExist(err) {
 		return err
 	}
+	if standalone && !p.Standalone && p.Filename != "" && !p.Pending && hasAudio(filepath.Join(shared, p.Filename)) {
+		p.Standalone = true
+		return p.store(private)
+	}
+	p.Standalone = p.Standalone || standalone
 	p.Song = s
 	if p.Filename == "" || !hasAudio(filepath.Join(shared, p.Filename)) {
 		if _, err = c.CacheSong(ctx, s, c.MusicDir(root)); err != nil {

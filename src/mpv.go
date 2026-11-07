@@ -10,7 +10,6 @@ import (
 // Runs in its own goroutine. Minimal work per tick to avoid starving audio.
 func (app *MiyooPod) startPlaybackPoller() {
 	lastDrawnSecond := -1
-	saveTickCount := 0
 
 	for app.Running {
 		if app.Playing != nil && app.Playing.State != StateStopped {
@@ -73,12 +72,6 @@ func (app *MiyooPod) startPlaybackPoller() {
 				}
 			}
 
-			// Save playback state every 10 seconds during active playback
-			saveTickCount++
-			if saveTickCount >= 10 {
-				app.savePlaybackState()
-				saveTickCount = 0
-			}
 		}
 		// Increased sleep to reduce CPU usage and SD card contention
 		time.Sleep(1000 * time.Millisecond)

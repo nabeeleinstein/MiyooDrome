@@ -15,7 +15,7 @@ import (
 const (
 	APP_VERSION     = "0.3.2"
 	MIYOOPOD_AUTHOR = "Danilo Fragoso"
-	MIYOOPOD_URL    = "https://github.com/danfragoso/miyoopod"
+	projectURL      = "https://github.com/nabeeleinstein/MiyooDrome"
 )
 
 // Native drawing resolution
@@ -477,7 +477,7 @@ type Album struct {
 	Tracks  []*Track    `json:"-"` // Reconstructed from library tracks
 	ArtData []byte      `json:"-"` // Don't store in JSON, only used temporarily during extraction
 	ArtExt  string      `json:"-"`
-	ArtPath string      `json:"artPath,omitempty"` // Path to saved artwork file (from MusicBrainz)
+	ArtPath string      `json:"artPath,omitempty"` // Cached cover path
 	ArtImg  image.Image `json:"-"`                 // Decoded at runtime
 }
 
@@ -521,24 +521,24 @@ const (
 	ScreenMenu ScreenType = iota
 	ScreenNowPlaying
 	ScreenQueue
-	ScreenAlbumArt
 	ScreenLibraryScan
 	ScreenLyrics
 	ScreenSignIn
 	ScreenNavSearch
 	ScreenNavTask
+	ScreenAbout
 )
 
 func (s ScreenType) String() string {
 	switch s {
+	case ScreenAbout:
+		return "about"
 	case ScreenMenu:
 		return "menu"
 	case ScreenNowPlaying:
 		return "now_playing"
 	case ScreenQueue:
 		return "queue"
-	case ScreenAlbumArt:
-		return "album_art"
 	case ScreenLibraryScan:
 		return "library_scan"
 	case ScreenLyrics:
@@ -555,6 +555,7 @@ func (s ScreenType) String() string {
 }
 
 type MenuItem struct {
+	IndexName   string
 	RemoteCover *navPreview
 	Label       string
 	HasSubmenu  bool
@@ -566,6 +567,9 @@ type MenuItem struct {
 }
 
 type MenuScreen struct {
+	nextAlbums   func()
+	Alphabetical bool
+	SearchScope  string
 	RemoteCover  *navPreview
 	Title        string
 	Items        []*MenuItem
@@ -599,11 +603,17 @@ type CoverflowState struct {
 // --- Main application ---
 
 type MiyooPod struct {
+	heldMenuKey     Key
 	CacheLimitMiB   int
 	displayMu       sync.Mutex
 	keyboardActive  atomic.Bool
 	keyboardSession *onionKeyboardSession
 	navQuery        string
+	searchScope     string
+	searchRelease   Key
+	playerReturn    ScreenType
+	notice          string
+	noticeUntil     time.Time
 	navKeyboard     textKeyboard
 	navArtwork      navArtworkState
 	navTask         *navTask
@@ -714,19 +724,7 @@ type MiyooPod struct {
 	// Queue view state
 	QueueScrollOffset int // Scroll position for queue view
 
-	// Album art fetch state (background goroutine updates these, main thread reads for rendering)
-	albumArtStatusFunc func(string)
-	AlbumArtFetching   bool          // Whether a fetch is currently running
-	AlbumArtCurrent    int           // Current album index being fetched
-	AlbumArtTotal      int           // Total albums to fetch
-	AlbumArtAlbumName  string        // Name of album currently being fetched
-	AlbumArtArtist     string        // Artist of album currently being fetched
-	AlbumArtStatus     string        // Status text from MusicBrainz
-	AlbumArtFetched    int           // Success count
-	AlbumArtFailed     int           // Failure count
-	AlbumArtDone       bool          // Fetch complete, showing results
-	AlbumArtElapsed    string        // Elapsed time for results display
-	RedrawChan         chan struct{} // Background goroutines signal main thread to redraw
+	RedrawChan chan struct{} // Background goroutines signal main thread to redraw
 
 	// Library scan state (background goroutine)
 	LibScanRunning     bool   // Whether a scan is currently running
@@ -767,13 +765,5 @@ type MiyooPod struct {
 	MarqueeDstX       int         // Destination X for marquee blit
 	MarqueeDstW       int         // Visible window width for marquee blit
 	MarqueeColor      [3]uint8    // Tint color (r, g, b)
-
-	// Search state
-	SearchActive    bool        // Whether search panel is visible
-	SearchQuery     string      // Current search input string
-	SearchGridRow   int         // Selected row in the A-Z grid (0-based)
-	SearchGridCol   int         // Selected column in the A-Z grid (0-based)
-	SearchAllItems  []*MenuItem // Unfiltered menu items (saved when search starts)
-	SearchMenuTitle string      // Original menu title
 
 }

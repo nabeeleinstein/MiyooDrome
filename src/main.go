@@ -203,6 +203,9 @@ func main() {
 		logMsg("Could not remove an interrupted download: " + err.Error())
 	}
 
+	if err := navcore.ResumeAlbumRemovals(MUSIC_ROOT, SHARED_MUSIC_DIR); err != nil {
+		logMsg("Could not finish album removal: " + err.Error())
+	}
 	if err := navcore.MigrateDownloads(MUSIC_ROOT, SHARED_MUSIC_DIR); err != nil {
 		logMsg("Could not finish moving saved music: " + err.Error())
 	}
@@ -241,6 +244,7 @@ func main() {
 			time.Sleep(33 * time.Millisecond)
 		}
 	scanFinished:
+		app.setScreen(ScreenMenu)
 	}
 
 	// Restore saved playback state (queue, position) before building menu
@@ -265,6 +269,7 @@ func main() {
 	// Draw initial menu
 	app.drawCurrentScreen()
 
+	lastSave := time.Now()
 	// Main loop: poll SDL events on main thread (required by SDL2)
 	// SDL_PollEvent MUST run on the thread that called SDL_Init (LockOSThread in init)
 	// Sleep between polls to keep CPU usage low (replaces old runtime.Gosched spin loop)
@@ -283,17 +288,26 @@ func main() {
 				// Key release — clear repeat state if it's the held key
 				keyReleased := Key(-keyEvent - 1)
 				app.handleKeyRelease(keyReleased)
+				if keyReleased == app.heldMenuKey {
+					app.heldMenuKey = NONE
+				}
 				if keyReleased == app.LastKey {
 					app.LastKey = NONE
 				}
 			} else {
 				key := Key(keyEvent)
+				if key == app.heldMenuKey && (key == RIGHT || key == A) {
+					continue
+				}
+				if app.CurrentScreen == ScreenMenu && (key == RIGHT || key == A) {
+					app.heldMenuKey = key
+				}
 				// Arm repeat for navigation keys BEFORE handling the key.
 				// A blocking modal (e.g. the About screen) may consume the
 				// matching key-release, so arming afterwards would leave the
 				// key stuck "held" and auto-repeat it on return. Arming first
 				// lets such modals clear LastKey to cancel the phantom repeat.
-				if key == UP || key == DOWN || key == LEFT || key == RIGHT {
+				if key == UP || key == DOWN || ((key == LEFT || key == RIGHT) && app.CurrentScreen != ScreenMenu) {
 					app.LastKey = key
 					app.LastKeyTime = time.Now()
 				}
@@ -312,11 +326,21 @@ func main() {
 			now := time.Now()
 			if now.Sub(app.LastKeyTime) >= app.RepeatDelay &&
 				now.Sub(app.LastRepeatTime) >= app.RepeatRate {
-				app.handleKey(app.LastKey)
-				app.LastRepeatTime = now
+				if !app.repeatByLetter(now) {
+					app.handleKey(app.LastKey)
+					app.LastRepeatTime = now
+				}
 			}
 		}
 
+		if app.notice != "" && time.Now().After(app.noticeUntil) {
+			app.notice = ""
+			app.requestRedraw()
+		}
+		if app.Playing.State == StatePlaying && time.Since(lastSave) >= 10*time.Second {
+			app.savePlaybackState()
+			lastSave = time.Now()
+		}
 		app.pollSeek()
 		app.pollMarquee()
 		app.pollNavUpdates()
@@ -372,19 +396,33 @@ func main() {
 	sdlCleanup()
 }
 
+func (app *MiyooPod) openPlayer() {
+	if app.CurrentScreen != ScreenNowPlaying {
+		app.playerReturn = app.CurrentScreen
+		app.searchRelease = NONE
+		app.signIn.editOnRelease = false
+		app.setScreen(ScreenNowPlaying)
+	}
+	app.LastKey = NONE
+}
 func (app *MiyooPod) setScreen(screen ScreenType) {
 	app.CurrentScreen = screen
 }
 
 // handleKeyRelease handles key release events
 func (app *MiyooPod) handleKeyRelease(key Key) {
+	if key == SELECT {
+		app.SelectKeyPressed = false
+	}
+	if app.CurrentScreen == ScreenNavSearch && (app.searchRelease == key || (app.searchRelease == A && key == RIGHT)) {
+		app.searchRelease = NONE
+		app.startOnionKeyboard()
+		return
+	}
 	if key == A && app.CurrentScreen == ScreenSignIn && app.signIn.editOnRelease {
 		app.signIn.editOnRelease = false
 		app.startOnionKeyboard()
 		return
-	}
-	if key == SELECT {
-		app.SelectKeyPressed = false
 	}
 
 	// Handle seek release on Now Playing screen
@@ -424,6 +462,11 @@ func (app *MiyooPod) handleKey(key Key) {
 		return
 	}
 
+	if key == R2 {
+		app.openPlayer()
+		app.drawCurrentScreen()
+		return
+	}
 	if app.CurrentScreen == ScreenNavTask {
 		app.handleNavTaskKey(key)
 		app.drawCurrentScreen()
@@ -440,32 +483,22 @@ func (app *MiyooPod) handleKey(key Key) {
 		return
 	}
 
-	// If search panel is active, it consumes most keys
-	if app.SearchActive && app.handleSearchKey(key) {
-		return
-	}
-
 	// Global keys (work from any screen)
 	switch key {
 	case START:
-		// Go to Now Playing screen (not allowed during library scan or album art fetch)
-		if app.CurrentScreen == ScreenLibraryScan || app.CurrentScreen == ScreenAlbumArt {
+		// Go to Now Playing screen (not allowed during library scan)
+		if app.CurrentScreen == ScreenLibraryScan {
 			return
 		}
 		// Let ScreenNowPlaying handle START itself (e.g. to open lyrics)
 		if app.CurrentScreen == ScreenNowPlaying {
 			break
 		}
-		if app.Playing != nil && app.Playing.Track != nil {
-			if app.SearchActive {
-				app.cancelSearch()
-			}
-			app.setScreen(ScreenNowPlaying)
-			app.drawCurrentScreen()
-		}
+		app.openPlayer()
+		app.drawCurrentScreen()
 		return
 	case L:
-		if app.CurrentScreen == ScreenLibraryScan || app.CurrentScreen == ScreenAlbumArt {
+		if app.CurrentScreen == ScreenLibraryScan {
 			return
 		}
 		if app.CurrentScreen == ScreenNowPlaying && app.Playing != nil && app.Playing.State != StateStopped {
@@ -476,7 +509,7 @@ func (app *MiyooPod) handleKey(key Key) {
 		app.drawCurrentScreen()
 		return
 	case R:
-		if app.CurrentScreen == ScreenLibraryScan || app.CurrentScreen == ScreenAlbumArt {
+		if app.CurrentScreen == ScreenLibraryScan {
 			return
 		}
 		if app.CurrentScreen == ScreenNowPlaying && app.Playing != nil && app.Playing.State != StateStopped {
@@ -487,7 +520,7 @@ func (app *MiyooPod) handleKey(key Key) {
 		app.drawCurrentScreen()
 		return
 	case SELECT:
-		if app.CurrentScreen == ScreenLibraryScan || app.CurrentScreen == ScreenAlbumArt {
+		if app.CurrentScreen == ScreenLibraryScan {
 			return
 		}
 		// On queue screen, SELECT clears queue (handled by handleQueueKey)
@@ -496,7 +529,12 @@ func (app *MiyooPod) handleKey(key Key) {
 		}
 		// On searchable menu screens, toggle search instead of shuffle
 		if app.CurrentScreen == ScreenMenu && app.isSearchableMenu() {
-			app.toggleSearch()
+			m := app.MenuStack[len(app.MenuStack)-1]
+			scope := m.SearchScope
+			if scope == "" {
+				scope = "list"
+			}
+			app.beginSearch(scope, SELECT)
 			app.drawCurrentScreen()
 			return
 		}
@@ -513,10 +551,13 @@ func (app *MiyooPod) handleKey(key Key) {
 		app.handleNowPlayingKey(key)
 	case ScreenQueue:
 		app.handleQueueKey(key)
-	case ScreenAlbumArt:
-		app.handleAlbumArtKey(key)
 	case ScreenLibraryScan:
 		app.handleLibraryScanKey(key)
+	case ScreenAbout:
+		if key == B || key == MENU || key == LEFT {
+			app.setScreen(ScreenMenu)
+			app.drawCurrentScreen()
+		}
 	case ScreenLyrics:
 		app.handleLyricsKey(key)
 	}
@@ -530,7 +571,8 @@ func (app *MiyooPod) handleNowPlayingKey(key Key) {
 			app.drawCurrentScreen()
 		}
 	case LEFT, B:
-		app.setScreen(ScreenMenu)
+		app.setScreen(app.playerReturn)
+		app.playerReturn = ScreenMenu
 		app.drawCurrentScreen()
 	case RIGHT:
 		// Show queue
@@ -562,6 +604,8 @@ func (app *MiyooPod) drawCurrentScreen() {
 		app.drawNavTask()
 	case ScreenNavSearch:
 		app.drawNavSearch()
+	case ScreenAbout:
+		app.drawAboutScreen()
 	case ScreenSignIn:
 		app.drawSignIn()
 	case ScreenMenu:
@@ -573,14 +617,15 @@ func (app *MiyooPod) drawCurrentScreen() {
 	case ScreenQueue:
 		app.drawQueueScreen()
 		app.drawStatusBar()
-	case ScreenAlbumArt:
-		app.drawAlbumArtScreen()
-		app.drawAlbumArtStatusBar()
 	case ScreenLibraryScan:
 		app.drawLibraryScanScreen()
 		app.drawLibraryScanStatusBar()
 	case ScreenLyrics:
 		app.drawLyricsScreen()
+	}
+
+	if app.notice != "" && time.Now().Before(app.noticeUntil) {
+		app.drawNotice()
 	}
 
 	// Draw lock overlay if locked
@@ -709,8 +754,8 @@ func audioGetDurationForFile(path string) float64 {
 	return float64(C.audio_get_file_duration(cpath))
 }
 
-func audioSeek(position float64) {
-	C.audio_seek(C.double(position))
+func audioSeek(position float64) bool {
+	return C.audio_seek(C.double(position)) == 0
 }
 
 func audioSetVolume(volume int) {

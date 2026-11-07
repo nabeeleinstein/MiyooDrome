@@ -30,25 +30,7 @@ func (app *MiyooPod) playTrackFromList(tracks []*Track, startIdx int) {
 
 	app.playCurrentQueueTrack()
 
-	app.setScreen(ScreenNowPlaying)
-	app.refreshRootMenu()
-	app.drawCurrentScreen()
-}
-
-// shuffleAllAndPlay queues all library tracks, shuffles, and starts playing
-func (app *MiyooPod) shuffleAllAndPlay() {
-	if len(app.Library.Tracks) == 0 {
-		return
-	}
-
-	app.Queue.Tracks = make([]*Track, len(app.Library.Tracks))
-	copy(app.Queue.Tracks, app.Library.Tracks)
-	app.Queue.Shuffle = true
-	app.Queue.CurrentIndex = 0
-	app.buildShuffleOrder(0)
-
-	app.playCurrentQueueTrack()
-
+	app.playerReturn = ScreenMenu
 	app.setScreen(ScreenNowPlaying)
 	app.refreshRootMenu()
 	app.drawCurrentScreen()
@@ -64,7 +46,7 @@ func (app *MiyooPod) playCurrentQueueTrack() {
 	if err := app.prepareNavTrack(track); err != nil {
 		app.mpvStop()
 		app.Playing.State = StateStopped
-		app.Playing.Track = nil
+		app.Playing.Track = track
 		app.NPCacheDirty = true
 		app.showError(err.Error())
 		return
@@ -136,7 +118,18 @@ func (app *MiyooPod) getCurrentTrack() *Track {
 }
 
 func (app *MiyooPod) togglePlayPause() {
-	if app.Playing == nil || app.Playing.State == StateStopped {
+	if app.Playing == nil {
+		return
+	}
+	if app.Playing.State == StateStopped {
+		if app.getCurrentTrack() != nil {
+			pos := app.Playing.Position
+			app.playCurrentQueueTrack()
+			if app.Playing.State == StatePlaying && pos > 0 {
+				audioSeek(pos)
+				app.Playing.Position = pos
+			}
+		}
 		return
 	}
 	app.mpvTogglePause()
@@ -315,7 +308,7 @@ func (app *MiyooPod) updateCoverflowForCurrentTrack() {
 
 	track := app.Playing.Track
 
-	if len(app.Coverflow.Albums) == 0 {
+	if len(app.Coverflow.Albums) == 0 && app.Library != nil {
 		app.Coverflow.Albums = app.Library.Albums
 	}
 

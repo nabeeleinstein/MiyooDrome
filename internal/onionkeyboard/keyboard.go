@@ -22,7 +22,7 @@ type Result struct {
 	Err      error
 }
 
-// Only the URL and username enter this function. Password input stays in the player.
+// Search, server address and username use this helper. Password input stays in the player.
 func Edit(ctx context.Context, dir, title, initial string) Result {
 	cmd := exec.CommandContext(ctx, filepath.Join(dir, "bin", "kbinput"), "-t", title, "-i", initial)
 	cmd.Dir = dir

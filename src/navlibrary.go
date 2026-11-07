@@ -86,22 +86,10 @@ func (app *MiyooPod) localAlbumItems(a *Album) []*MenuItem {
 	return append([]*MenuItem{{Label: "Play album", Action: func() { app.playGroup(ordered, false) }}}, items...)
 }
 
-func (app *MiyooPod) playLocalArtist(a *Artist, shuffle bool) {
-	var tracks []*Track
-	for _, album := range a.Albums {
-		for _, t := range album.Tracks {
-			if t.Artist == a.Name || t.AlbumArtist == a.Name {
-				tracks = append(tracks, t)
-			}
-		}
-	}
-	app.playGroup(tracks, shuffle)
-}
-
 func (app *MiyooPod) navArtistItem(parent *MenuScreen, artist navcore.Artist) *MenuItem {
 	sub := &MenuScreen{Title: artist.Name, Parent: parent, ReloadOnOpen: true}
 	sub.Builder = func() []*MenuItem { return app.navArtistAlbums(sub, artist) }
-	return &MenuItem{Label: artist.Name, Submenu: sub, HasSubmenu: true}
+	return &MenuItem{IndexName: artist.Name, Label: artist.Name, Submenu: sub, HasSubmenu: true}
 }
 
 func navAlbumPreview(dir string, album navcore.Album, offline bool) *navPreview {
@@ -147,30 +135,8 @@ func (app *MiyooPod) navAlbumActions(c *navcore.Client, dir string, a navcore.Al
 	if c != nil {
 		items = append(items, &MenuItem{Label: "Download album", Action: func() { app.startAlbumDownload(c, a, songs) }})
 	}
+	items = append(items, app.searchButton("Search these songs", "list"))
 	return append(items, app.buildTrackMenuItems(tracks)...)
-}
-
-func (app *MiyooPod) downloadedMenu(root *MenuScreen) *MenuItem {
-	sub := &MenuScreen{Title: "Downloaded albums", Parent: root, ReloadOnOpen: true}
-	sub.Builder = func() []*MenuItem {
-		albums, err := navcore.DownloadedAlbums(MUSIC_ROOT, SHARED_MUSIC_DIR)
-		if err != nil {
-			return app.navError(err.Error())
-		}
-		var items []*MenuItem
-		for _, saved := range albums {
-			a := saved
-			preview := navAlbumPreview(a.Dir, a.Album, true)
-			page := &MenuScreen{Title: a.Album.Name, Parent: sub, RemoteCover: preview}
-			page.Builder = func() []*MenuItem { return app.navAlbumActions(nil, a.Dir, a.Album, a.Songs) }
-			items = append(items, &MenuItem{Label: a.Album.Name + " - " + a.Album.Artist, Submenu: page, HasSubmenu: true, RemoteCover: preview})
-		}
-		if len(items) == 0 {
-			return []*MenuItem{{Label: "No downloaded albums"}}
-		}
-		return items
-	}
-	return &MenuItem{Label: sub.Title, Submenu: sub, HasSubmenu: true}
 }
 
 func trackPreview(t *Track) navPreview {

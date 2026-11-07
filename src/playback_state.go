@@ -73,7 +73,11 @@ func (app *MiyooPod) savePlaybackState() {
 		return
 	}
 
-	if err := os.WriteFile(PLAYBACK_STATE_PATH, data, 0644); err != nil {
+	tmp := PLAYBACK_STATE_PATH + ".tmp"
+	if err = os.WriteFile(tmp, data, 0600); err == nil {
+		err = os.Rename(tmp, PLAYBACK_STATE_PATH)
+	}
+	if err != nil {
 		logMsg(fmt.Sprintf("ERROR: Failed to save playback state: %v", err))
 	}
 }
@@ -97,16 +101,12 @@ func (app *MiyooPod) restorePlaybackState() {
 	}
 
 	// Resolve track paths against the loaded library
-	if app.Library == nil || app.Library.TracksByPath == nil {
-		logMsg("WARNING: Cannot restore playback state - library not loaded")
-		return
-	}
 
 	tracks := make([]*Track, 0, len(ps.TrackPaths))
 	pathToNewIdx := make(map[int]int) // old index -> new index mapping
 	for oldIdx, path := range ps.TrackPaths {
 		t := ps.RemoteTracks[path]
-		if t == nil {
+		if t == nil && app.Library != nil {
 			t = app.Library.TracksByPath[path]
 		}
 		if t != nil {
@@ -171,7 +171,8 @@ func (app *MiyooPod) restorePlaybackState() {
 	if err != nil {
 		logMsg(fmt.Sprintf("WARNING: Failed to load saved track: %v", err))
 		app.Playing.State = StateStopped
-		app.Playing.Track = nil
+		app.Playing.Position = ps.Position
+		app.NPCacheDirty = true
 		return
 	}
 
@@ -189,25 +190,11 @@ func (app *MiyooPod) restorePlaybackState() {
 
 	logMsg(fmt.Sprintf("INFO: Restored playback state - %s at %.1fs (paused)", track.Title, ps.Position))
 
-	// Seek to saved position in background — audio backend needs time to be ready
-	if ps.Position > 0 {
-		seekTarget := ps.Position
-		go func() {
-			for attempt := 0; attempt < 10; attempt++ {
-				time.Sleep(100 * time.Millisecond)
-				audioSeek(seekTarget)
-
-				time.Sleep(50 * time.Millisecond)
-				state := audioGetState()
-				if state.Position > 0 && state.Duration > 0 {
-					app.Playing.Position = state.Position
-					app.Playing.Duration = state.Duration
-					app.NPCacheDirty = true
-					app.requestRedraw()
-					return
-				}
-			}
-			logMsg(fmt.Sprintf("WARNING: Could not verify seek to %.1fs for %s", seekTarget, track.Title))
-		}()
+	// Seek before accepting new input, so a delayed retry cannot seek a different song.
+	if ps.Position > 0 && !audioSeek(ps.Position) {
+		time.Sleep(100 * time.Millisecond)
+		if !audioSeek(ps.Position) {
+			logMsg("Saved playback position could not be restored")
+		}
 	}
 }

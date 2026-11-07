@@ -29,9 +29,9 @@ func (app *MiyooPod) navError(message string) []*MenuItem {
 func (app *MiyooPod) navRootItem(root *MenuScreen) *MenuItem {
 	menu := &MenuScreen{ReloadOnOpen: true, Title: "Navidrome", Parent: root}
 	menu.Builder = func() []*MenuItem {
-		albums := &MenuScreen{ReloadOnOpen: true, Title: "Online Albums", Parent: menu}
+		albums := &MenuScreen{ReloadOnOpen: true, Title: "Online Albums", Alphabetical: true, SearchScope: "albums", Parent: menu}
 		albums.Builder = func() []*MenuItem { return app.navAlbumItems(albums, 0) }
-		artists := &MenuScreen{ReloadOnOpen: true, Title: "Online Artists", Parent: menu}
+		artists := &MenuScreen{ReloadOnOpen: true, Title: "Online Artists", Alphabetical: true, SearchScope: "artists", Parent: menu}
 		artists.Builder = func() []*MenuItem { return app.navArtistItems(artists) }
 		playlists := &MenuScreen{ReloadOnOpen: true, Title: "Online Playlists", Parent: menu}
 		playlists.Builder = func() []*MenuItem { return app.navPlaylistItems(playlists) }
@@ -67,6 +67,7 @@ func navCtx() (context.Context, context.CancelFunc) {
 	return context.WithTimeout(context.Background(), 14*time.Second)
 }
 func (app *MiyooPod) navAlbumItems(parent *MenuScreen, offset int) []*MenuItem {
+	parent.nextAlbums = nil
 	c, e := navClient()
 	if e != nil {
 		return app.navError(e.Error())
@@ -82,12 +83,25 @@ func (app *MiyooPod) navAlbumItems(parent *MenuScreen, offset int) []*MenuItem {
 		items = append(items, app.navAlbumItem(parent, c, album))
 	}
 	if len(albums) == 100 {
-		more := &MenuScreen{ReloadOnOpen: true, Title: fmt.Sprintf("Albums %d+", offset+100), Parent: parent}
-		more.Builder = func() []*MenuItem { return app.navAlbumItems(more, offset+100) }
-		items = append(items, &MenuItem{Label: "More albums...", HasSubmenu: true, Submenu: more})
+		parent.nextAlbums = func() {
+			retry := parent.nextAlbums
+			more := app.navAlbumItems(parent, offset+len(albums))
+			if len(more) == 1 && more[0].Label == "Navidrome unavailable" {
+				parent.nextAlbums = retry
+				more[0].Action()
+				app.LastKey = NONE
+				return
+			}
+
+			parent.Items = append(parent.Items[:len(parent.Items)-1], more...)
+			parent.SelIndex = min(parent.SelIndex, len(parent.Items)-1)
+			parent.adjustScroll()
+			app.MenuBG = nil
+		}
+		items = append(items, &MenuItem{Label: "More albums...", Action: parent.nextAlbums})
 	}
-	if len(items) == 0 {
-		return []*MenuItem{{Label: "No albums found"}}
+	if offset == 0 {
+		items = append([]*MenuItem{app.searchButton("Search albums", "albums")}, items...)
 	}
 	return items
 }
@@ -106,10 +120,8 @@ func (app *MiyooPod) navArtistItems(parent *MenuScreen) []*MenuItem {
 	for _, artist := range artists {
 		items = append(items, app.navArtistItem(parent, artist))
 	}
-	if len(items) == 0 {
-		return []*MenuItem{{Label: "No artists found"}}
-	}
-	return items
+	sortBrowse(items)
+	return append([]*MenuItem{app.searchButton("Search artists", "artists")}, items...)
 }
 func (app *MiyooPod) navArtistAlbums(parent *MenuScreen, artist navcore.Artist) []*MenuItem {
 	c, e := navClient()
@@ -128,6 +140,7 @@ func (app *MiyooPod) navArtistAlbums(parent *MenuScreen, artist navcore.Artist) 
 	items := []*MenuItem{
 		{Label: "Play all songs", Action: func() { app.navPlayArtist(c, artist, albums, false) }},
 		{Label: "Shuffle artist", Action: func() { app.navPlayArtist(c, artist, albums, true) }},
+		app.searchButton("Search these albums", "list"),
 	}
 	for _, album := range albums {
 		items = append(items, app.navAlbumItem(parent, c, album))

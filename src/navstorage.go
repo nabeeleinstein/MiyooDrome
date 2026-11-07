@@ -59,24 +59,6 @@ func (app *MiyooPod) downloadSong(t *Track) {
 		return navTaskResult{message: "Saved to Media/Music/" + appFolder}
 	})
 }
-func (app *MiyooPod) savedSongsMenu(root *MenuScreen) *MenuItem {
-	page := &MenuScreen{Title: "Downloaded songs", Parent: root, ReloadOnOpen: true}
-	page.Builder = func() []*MenuItem {
-		saved, err := navcore.DownloadedSongs(MUSIC_ROOT, SHARED_MUSIC_DIR)
-		if err != nil {
-			return app.navError(err.Error())
-		}
-		var tracks []*Track
-		for _, s := range saved {
-			tracks = append(tracks, navTracks(s.Dir, []navcore.Song{s.Song}, true)...)
-		}
-		if len(tracks) == 0 {
-			return []*MenuItem{{Label: "No downloaded songs"}}
-		}
-		return app.buildTrackMenuItems(tracks)
-	}
-	return &MenuItem{Label: page.Title, HasSubmenu: true, Submenu: page}
-}
 func (app *MiyooPod) storageMenu(root *MenuScreen) *MenuItem {
 	page := &MenuScreen{Title: "Storage", Parent: root, ReloadOnOpen: true}
 	page.Builder = func() []*MenuItem {

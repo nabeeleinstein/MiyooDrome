@@ -26,6 +26,8 @@ type navTask struct {
 
 func (app *MiyooPod) beginNavTask(title string, work func(context.Context, func(string)) navTaskResult) {
 	if app.navTask != nil {
+		app.setScreen(ScreenNavTask)
+		app.requestRedraw()
 		return
 	}
 	ctx, cancel := context.WithCancel(context.Background())
@@ -95,7 +97,7 @@ func (app *MiyooPod) pollNavUpdates() {
 		case r.message != "":
 			t.status = r.message
 		default:
-			t.status = "Saved to Downloaded albums"
+			t.status = "Saved to Downloaded library"
 		}
 		app.requestRedraw()
 	default:

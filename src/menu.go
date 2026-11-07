@@ -10,49 +10,23 @@ import (
 
 func (app *MiyooPod) buildRootMenu() *MenuScreen {
 	root := &MenuScreen{Title: appName}
-	local := &MenuScreen{Title: "Local library", Parent: root}
-	local.Builder = func() []*MenuItem { return app.localLibraryItems(local) }
+	local := &MenuScreen{Title: "Downloaded library", Parent: root, ReloadOnOpen: true}
+	local.Builder = func() []*MenuItem { return app.downloadLibrary(local) }
 	settings := &MenuScreen{Title: "Settings", Parent: root}
 	settings.Builder = func() []*MenuItem { return app.buildSettingsMenuItems(settings) }
 
 	root.Items = []*MenuItem{
+		{Label: "Now Playing", Action: app.openPlayer},
 		app.navRootItem(root),
 		{Label: "Search", Action: app.openNavSearch},
-		app.downloadedMenu(root),
-		app.savedSongsMenu(root),
 		{Label: local.Title, HasSubmenu: true, Submenu: local},
 		app.storageMenu(root),
 		{Label: settings.Title, HasSubmenu: true, Submenu: settings},
-		{Label: "About", Action: app.showAboutScreen},
-		{Label: "Exit", Action: func() { audioStop(); app.Running = false }},
+		{Label: "About", Action: func() { app.setScreen(ScreenAbout) }},
+		{Label: "Exit", Action: func() { app.Running = false }},
 	}
 	root.Built = true
 	return root
-}
-
-func (app *MiyooPod) localLibraryItems(local *MenuScreen) []*MenuItem {
-	var items []*MenuItem
-	addPage := func(title string, build func() []*MenuItem) {
-		page := &MenuScreen{Title: title, Parent: local, Builder: build}
-		items = append(items, &MenuItem{Label: title, HasSubmenu: true, Submenu: page})
-	}
-	if len(app.Library.Playlists) > 0 {
-		addPage("Playlists", func() []*MenuItem { return app.buildPlaylistMenuItems(local) })
-	}
-	if len(app.Library.Artists) > 0 {
-		addPage("Artists", func() []*MenuItem { return app.buildArtistMenuItems(local) })
-	}
-	if len(app.Library.Albums) > 0 {
-		addPage("Albums", func() []*MenuItem { return app.buildAlbumMenuItems(local) })
-	}
-	if len(app.Library.Tracks) > 0 {
-		addPage("Songs", app.buildSongMenuItems)
-		items = append(items, &MenuItem{Label: "Shuffle All", Action: app.shuffleAllAndPlay})
-	}
-	return append(items,
-		&MenuItem{Label: "Scan Library", Action: func() { app.rescanLibrary(local) }},
-		&MenuItem{Label: "Fetch Album Art", Action: app.scanAlbumArt},
-	)
 }
 
 func (app *MiyooPod) buildPlaylistMenuItems(root *MenuScreen) []*MenuItem {
@@ -73,79 +47,6 @@ func (app *MiyooPod) buildPlaylistMenuItems(root *MenuScreen) []*MenuItem {
 		})
 	}
 	return items
-}
-
-func (app *MiyooPod) buildArtistMenuItems(root *MenuScreen) []*MenuItem {
-	items := make([]*MenuItem, 0, len(app.Library.Artists))
-	for _, artist := range app.Library.Artists {
-		a := artist // capture
-		albumMenu := &MenuScreen{
-			Title:  a.Name,
-			Parent: root,
-			Builder: func() []*MenuItem {
-				albumItems := make([]*MenuItem, 0, len(a.Albums))
-				for _, album := range a.Albums {
-					alb := album // capture
-					trackMenu := &MenuScreen{
-						Title:  alb.Name,
-						Parent: root,
-						Builder: func() []*MenuItem {
-							return app.localAlbumItems(alb)
-						},
-					}
-					albumItems = append(albumItems, &MenuItem{
-						Label:      alb.Name,
-						HasSubmenu: true,
-						Submenu:    trackMenu,
-						Album:      alb, // Store album reference for preview
-					})
-				}
-				if len(a.Albums) > 0 {
-					actions := []*MenuItem{{Label: "Play all songs", Action: func() { app.playLocalArtist(a, false) }}, {Label: "Shuffle artist", Action: func() { app.playLocalArtist(a, true) }}}
-					return append(actions, albumItems...)
-				}
-				return albumItems
-			},
-		}
-		items = append(items, &MenuItem{
-			Label:      a.Name,
-			HasSubmenu: true,
-			Submenu:    albumMenu,
-			Artist:     a, // Store artist reference for Y-key action
-		})
-	}
-	return items
-}
-
-func (app *MiyooPod) buildAlbumMenuItems(root *MenuScreen) []*MenuItem {
-	items := make([]*MenuItem, 0, len(app.Library.Albums))
-	for _, album := range app.Library.Albums {
-		alb := album // capture
-		trackMenu := &MenuScreen{
-			Title:  alb.Name + " - " + alb.Artist,
-			Parent: root,
-			Builder: func() []*MenuItem {
-				return app.localAlbumItems(alb)
-			},
-		}
-		items = append(items, &MenuItem{
-			Label:      alb.Name + " - " + alb.Artist,
-			HasSubmenu: true,
-			Submenu:    trackMenu,
-			Album:      alb, // Store album reference for preview
-		})
-	}
-	return items
-}
-
-func (app *MiyooPod) buildSongMenuItems() []*MenuItem {
-	tracks := make([]*Track, len(app.Library.Tracks))
-	copy(tracks, app.Library.Tracks)
-	sort.Slice(tracks, func(i, j int) bool {
-		return tracks[i].Title < tracks[j].Title
-	})
-
-	return app.buildTrackMenuItems(tracks)
 }
 
 func (app *MiyooPod) buildThemeMenuItems(root *MenuScreen) []*MenuItem {
@@ -221,6 +122,8 @@ func (app *MiyooPod) buildSettingsMenuItems(root *MenuScreen) []*MenuItem {
 			app.toggleKeepPerformanceOnLock()
 		},
 	})
+
+	items = append(items, &MenuItem{Label: "Rescan imported music", Action: func() { app.startLibraryScan(nil) }})
 
 	// Clear App Data
 	items = append(items, &MenuItem{
@@ -305,14 +208,12 @@ func (app *MiyooPod) handleMenuKey(key Key) {
 		}
 		current.adjustScroll()
 	case RIGHT, A:
+		app.LastKey = NONE
 		if len(current.Items) == 0 {
 			return
 		}
 		// Grab the selected item BEFORE cancelling search, since cancel restores the unfiltered list
 		item := current.Items[current.SelIndex]
-		if app.SearchActive || app.SearchAllItems != nil {
-			app.cancelSearch()
-		}
 		if item.Submenu != nil {
 			if item.Submenu.ReloadOnOpen {
 				item.Submenu.SelIndex, item.Submenu.ScrollOff = 0, 0
@@ -328,19 +229,12 @@ func (app *MiyooPod) handleMenuKey(key Key) {
 			item.Action()
 		}
 	case LEFT, B:
-		if app.SearchActive {
-			app.closeSearchPanel()
-		} else if app.SearchAllItems != nil {
-			// Search panel was closed but filter is still active — clear it
-			app.cancelSearch()
-		} else if len(app.MenuStack) > 1 {
+		app.LastKey = NONE
+		if len(app.MenuStack) > 1 {
 			app.MenuStack = app.MenuStack[:len(app.MenuStack)-1]
-
 		}
 	case MENU:
-		if app.SearchActive || app.SearchAllItems != nil {
-			app.cancelSearch()
-		} else if len(app.MenuStack) > 1 {
+		if len(app.MenuStack) > 1 {
 			app.MenuStack = app.MenuStack[:1]
 		} else {
 			app.Running = false
@@ -356,6 +250,7 @@ func (app *MiyooPod) handleMenuKey(key Key) {
 			return
 		}
 		item := current.Items[current.SelIndex]
+		before := len(app.Queue.Tracks)
 		if item.Track != nil {
 			app.addToQueue(item.Track)
 		} else if item.Album != nil {
@@ -371,8 +266,18 @@ func (app *MiyooPod) handleMenuKey(key Key) {
 				}
 			}
 		}
+		if item.Track != nil || item.Artist != nil || item.Album != nil {
+			added := len(app.Queue.Tracks) - before
+			switch {
+			case added == 0:
+				app.notify("Already in queue")
+			case added == 1 && item.Track != nil:
+				app.notify("Queued: " + item.Track.Title)
+			default:
+				app.notify(fmt.Sprintf("Added to queue: %d", added))
+			}
+		}
 	}
-
 	app.drawCurrentScreen()
 }
 
@@ -401,15 +306,8 @@ func (app *MiyooPod) drawMenuScreen() {
 		app.MenuBG = nil // invalidate cache on rebuild
 	}
 
-	// When search is active, always use the split layout with search panel
-	if app.SearchActive {
-		app.drawMenuWithSearchPanel(current)
-		app.MenuBG = nil
-		return
-	}
-
 	// Check if this is an album list (has albums in menu items)
-	isAlbumList := len(current.Items) > 0 && current.Items[0].Album != nil
+	isAlbumList := len(current.Items) > 0 && current.Items[current.SelIndex].Album != nil
 
 	if isAlbumList || current.RemoteCover != nil || (len(current.Items) > 0 && current.Items[current.SelIndex].RemoteCover != nil) {
 		app.drawAlbumListWithPreview(current)
@@ -465,76 +363,6 @@ func (app *MiyooPod) drawStandardMenuCached(current *MenuScreen) {
 	copy(app.MenuBG.Pix, app.FB.Pix)
 	app.MenuBGKey = cacheKey
 	app.MenuBGSel = current.SelIndex
-}
-
-// drawMenuWithSearchPanel renders the menu list on the left with search grid on the right
-func (app *MiyooPod) drawMenuWithSearchPanel(current *MenuScreen) {
-	dc := app.DC
-
-	dc.SetHexColor(app.CurrentTheme.BG)
-	dc.Clear()
-
-	app.drawHeader(current.Title)
-
-	listWidth := SCREEN_WIDTH - searchPanelWidth
-
-	// Draw menu items on the left
-	if len(current.Items) == 0 {
-		dc.SetFontFace(app.FontMenu)
-		dc.SetHexColor(app.CurrentTheme.Dim)
-		dc.DrawStringAnchored("No results", float64(listWidth)/2, SCREEN_HEIGHT/2, 0.5, 0.5)
-	} else {
-		endIdx := current.ScrollOff + VISIBLE_ITEMS
-		if endIdx > len(current.Items) {
-			endIdx = len(current.Items)
-		}
-
-		for i := current.ScrollOff; i < endIdx; i++ {
-			item := current.Items[i]
-			y := MENU_TOP_Y + (i-current.ScrollOff)*MENU_ITEM_HEIGHT
-			selected := i == current.SelIndex
-
-			if selected {
-				dc.SetHexColor(app.CurrentTheme.SelBG)
-				dc.DrawRectangle(0, float64(y), float64(listWidth), MENU_ITEM_HEIGHT)
-				dc.Fill()
-			}
-
-			dc.SetFontFace(app.FontMenu)
-			if selected {
-				dc.SetHexColor(app.CurrentTheme.SelTxt)
-			} else {
-				dc.SetHexColor(app.CurrentTheme.ItemTxt)
-			}
-
-			maxWidth := float64(listWidth - MENU_LEFT_PAD - 20)
-			displayText := app.truncateText(item.Label, maxWidth, app.FontMenu)
-			textY := float64(y) + float64(MENU_ITEM_HEIGHT)/2
-			dc.DrawStringAnchored(displayText, float64(MENU_LEFT_PAD), textY, 0, 0.5)
-
-			if item.HasSubmenu {
-				dc.DrawString(">", float64(listWidth-20), float64(y+MENU_ITEM_HEIGHT/2+6))
-			}
-		}
-
-		// Scroll bar for list
-		if len(current.Items) > VISIBLE_ITEMS {
-			scrollBarHeight := float64(SCREEN_HEIGHT-HEADER_HEIGHT-STATUS_BAR_HEIGHT) * float64(VISIBLE_ITEMS) / float64(len(current.Items))
-			scrollBarY := float64(HEADER_HEIGHT) + float64(SCREEN_HEIGHT-HEADER_HEIGHT-STATUS_BAR_HEIGHT)*float64(current.ScrollOff)/float64(len(current.Items))
-			dc.SetHexColor(app.CurrentTheme.Dim)
-			dc.DrawRectangle(float64(listWidth-5), scrollBarY, 3, scrollBarHeight)
-			dc.Fill()
-		}
-	}
-
-	// Vertical separator
-	dc.SetHexColor(app.CurrentTheme.Dim)
-	dc.SetLineWidth(1)
-	dc.DrawLine(float64(listWidth), float64(HEADER_HEIGHT), float64(listWidth), float64(SCREEN_HEIGHT-STATUS_BAR_HEIGHT))
-	dc.Stroke()
-
-	// Search panel on the right
-	app.drawSearchPanel(listWidth, HEADER_HEIGHT, searchPanelWidth)
 }
 
 // drawStandardMenu renders a normal menu without preview panel
@@ -594,7 +422,7 @@ func (app *MiyooPod) drawAlbumListWithPreview(current *MenuScreen) {
 	}
 
 	// Split screen: same width as search panel so layout doesn't shift when toggling search
-	listWidth := SCREEN_WIDTH - searchPanelWidth
+	listWidth := SCREEN_WIDTH - 200
 	previewX := listWidth + 10
 
 	// Draw menu items (left half)
@@ -683,7 +511,9 @@ func (app *MiyooPod) drawAlbumPreview(album *Album, x, y, width int) {
 	}
 
 	artX := centerX - artSize/2
-	app.fastBlitImage(coverImg, artX, yPos)
+	if coverImg != nil {
+		app.fastBlitImage(coverImg, artX, yPos)
+	}
 
 	// Border around art
 	dc.SetHexColor(app.CurrentTheme.Dim)
@@ -729,74 +559,4 @@ func (app *MiyooPod) drawAlbumPreview(album *Album, x, y, width int) {
 	}
 }
 
-// refreshRootMenu updates the root menu to include/exclude Now Playing
-func (app *MiyooPod) refreshRootMenu() {
-	app.MenuBG = nil
-	if app.RootMenu == nil {
-		return
-	}
-
-	hasNowPlaying := false
-	for _, item := range app.RootMenu.Items {
-		if item.Label == "Now Playing" {
-			hasNowPlaying = true
-			break
-		}
-	}
-
-	isPlaying := app.Playing != nil && app.Playing.State != StateStopped
-
-	if isPlaying && !hasNowPlaying {
-		// Insert Now Playing at the top
-		nowPlayingItem := &MenuItem{
-			Label: "Now Playing",
-			Action: func() {
-				app.setScreen(ScreenNowPlaying)
-				app.drawCurrentScreen()
-			},
-		}
-		app.RootMenu.Items = append([]*MenuItem{nowPlayingItem}, app.RootMenu.Items...)
-		// Adjust selection if needed
-		if app.RootMenu.SelIndex >= 0 {
-			app.RootMenu.SelIndex++
-		}
-	} else if !isPlaying && hasNowPlaying {
-		// Remove Now Playing
-		for i, item := range app.RootMenu.Items {
-			if item.Label == "Now Playing" {
-				app.RootMenu.Items = append(app.RootMenu.Items[:i], app.RootMenu.Items[i+1:]...)
-				// Adjust selection to prevent going negative
-				if app.RootMenu.SelIndex > i {
-					app.RootMenu.SelIndex--
-				} else if app.RootMenu.SelIndex == i {
-					// If Now Playing was selected, move to first item
-					app.RootMenu.SelIndex = 0
-				}
-				// Ensure selection is valid
-				if app.RootMenu.SelIndex < 0 {
-					app.RootMenu.SelIndex = 0
-				}
-				if app.RootMenu.SelIndex >= len(app.RootMenu.Items) {
-					app.RootMenu.SelIndex = len(app.RootMenu.Items) - 1
-				}
-				break
-			}
-		}
-	}
-}
-
-// rescanLibrary performs a full library scan and rebuilds the menu
-func (app *MiyooPod) rescanLibrary(local *MenuScreen) {
-	// Stop any current playback
-	if app.Playing.State == StatePlaying {
-		audioStop()
-		app.Playing.State = StateStopped
-	}
-
-	// Launch scan as background goroutine — menu rebuilds when done
-	app.startLibraryScan(func() {
-		local.Built = false
-		local.SelIndex, local.ScrollOff = 0, 0
-		app.refreshRootMenu()
-	})
-}
+func (app *MiyooPod) refreshRootMenu() { app.MenuBG = nil }

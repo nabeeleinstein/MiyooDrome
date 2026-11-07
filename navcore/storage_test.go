@@ -231,3 +231,74 @@ func TestPublicMP3Migration(t *testing.T) {
 		t.Fatal("deleted download was recreated by migration")
 	}
 }
+
+func TestRemoveAlbumKeepsOtherDownloadsAndResumes(t *testing.T) {
+	root, shared := t.TempDir(), t.TempDir()
+	c, err := New(cfg("https://example.com"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	dir := c.MusicDir(root)
+	if err := os.MkdirAll(dir, 0700); err != nil {
+		t.Fatal(err)
+	}
+	songs := []Song{{ID: "only", Title: "Only"}, {ID: "single", Title: "Single"}, {ID: "both", Title: "Shared track"}}
+	for _, song := range songs {
+		private := FilePath(dir, song.ID)
+		if err := os.WriteFile(private, bytes.Repeat([]byte{1}, 2048), 0600); err != nil {
+			t.Fatal(err)
+		}
+		if err := c.saveSong(context.Background(), root, shared, song, false); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := c.SaveSong(context.Background(), root, shared, songs[1]); err != nil {
+		t.Fatal(err)
+	}
+	record := func(id string, tracks []Song) {
+		b, err := json.Marshal(SavedAlbum{Album: Album{ID: id}, Songs: tracks})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := writeAtomic(albumPath(dir, id), b); err != nil {
+			t.Fatal(err)
+		}
+	}
+	record("first", songs)
+	record("other", songs[2:])
+	first := PlayablePath(shared, dir, "only")
+	untouched := filepath.Join(shared, "Manually imported.mp3")
+	if err := os.WriteFile(untouched, []byte("manual"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	if err := DeleteAlbum(root, shared, filepath.Dir(dir), "first"); err == nil {
+		t.Fatal("invalid account accepted")
+	}
+	// Simulate a power cut after one file was removed but before the pin was erased.
+	if err := os.Rename(albumPath(dir, "first"), albumPath(dir, "first")+".deleting"); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Remove(first); err != nil {
+		t.Fatal(err)
+	}
+	if err := ResumeAlbumRemovals(root, shared); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Stat(pinPath(FilePath(dir, "only"))); !os.IsNotExist(err) {
+		t.Fatal("stale pin", err)
+	}
+	albums, err := DownloadedAlbums(root, shared)
+	if err != nil || len(albums) != 1 || albums[0].Album.ID != "other" {
+		t.Fatal(albums, err)
+	}
+	if err := DeleteAlbum(root, shared, dir, "other"); err != nil {
+		t.Fatal(err)
+	}
+	kept, err := DownloadedSongs(root, shared)
+	if err != nil || len(kept) != 1 || kept[0].Song.ID != "single" {
+		t.Fatal(kept, err)
+	}
+	if b, err := os.ReadFile(untouched); err != nil || string(b) != "manual" {
+		t.Fatal("changed import", err)
+	}
+}

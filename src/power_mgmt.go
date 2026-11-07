@@ -50,7 +50,6 @@ func (app *MiyooPod) startInactivityMonitor() {
 func (app *MiyooPod) exitAppGracefully() {
 	logMsg("INFO: Power button held for 5s — exiting gracefully")
 
-	app.savePlaybackState()
 	restoreBrightness()
 	app.restoreCPUGovernor()
 

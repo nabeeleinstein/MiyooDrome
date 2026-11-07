@@ -116,10 +116,17 @@ type SavedAlbum struct {
 }
 
 func (c *Client) DownloadAlbum(ctx context.Context, root, shared string, a Album, songs []Song, progress func(int, string)) error {
+	albumMu.Lock()
+	defer albumMu.Unlock()
 	if len(songs) == 0 {
 		return errors.New("album contains no tracks")
 	}
 	dir := c.MusicDir(root)
+	if _, err := os.Stat(albumPath(dir, a.ID) + ".deleting"); err == nil {
+		return errors.New("finish removing this album before downloading it again")
+	} else if !os.IsNotExist(err) {
+		return err
+	}
 	coverID := a.CoverArt
 	if coverID == "" {
 		coverID = songs[0].CoverArt
@@ -140,7 +147,7 @@ func (c *Client) DownloadAlbum(ctx context.Context, root, shared string, a Album
 			progress(i, s.Title)
 		}
 		trackCtx, cancel := context.WithTimeout(ctx, 2*time.Minute)
-		err := c.SaveSong(trackCtx, root, shared, s)
+		err := c.saveSong(trackCtx, root, shared, s, false)
 		cancel()
 		if err != nil {
 			return fmt.Errorf("track %d of %d: %w", i+1, len(songs), err)
@@ -156,7 +163,7 @@ func (c *Client) DownloadAlbum(ctx context.Context, root, shared string, a Album
 	if err != nil {
 		return err
 	}
-	return writeAtomic(filepath.Join(dir, "albums", fmt.Sprintf("%x.json", sha256.Sum256([]byte(a.ID)))), data)
+	return writeAtomic(albumPath(dir, a.ID), data)
 }
 
 func DownloadedAlbums(root, shared string) ([]SavedAlbum, error) {
