@@ -1,44 +1,13 @@
-.PHONY: go
-go:
-	@go run scripts/build-inject.go
-	CC=arm-linux-gnueabihf-gcc CGO_ENABLED=1 GOARCH=arm GOOS=linux go build -o App/MiyooPod/MiyooPod src/*.go
+.PHONY: build test package
+test:
+	go test ./navcore -count=1
 
-.PHONY: updater
-updater:
-	CC=arm-linux-gnueabihf-gcc CGO_ENABLED=1 GOARCH=arm GOOS=linux go build -o App/MiyooPod/updater updater/*.go
+# Supply the two SDL include directories via CGO_CFLAGS.
+build:
+	GOOS=linux GOARCH=arm GOARM=7 CGO_ENABLED=1 \
+	CC="zig cc -target arm-linux-gnueabihf.2.17 -mcpu=cortex_a7" \
+	CGO_LDFLAGS="-Wl,--allow-shlib-undefined" \
+	go build -trimpath -ldflags="-s -w" -tags netgo,osusergo -o App/MiyooDrome/MiyooDrome ./src
 
-.PHONY: install-hooks
-install-hooks:
-	@echo "Installing git hooks..."
-	@chmod +x .git-hooks/pre-commit
-	@mkdir -p $$(git rev-parse --git-dir)/hooks
-	@cp .git-hooks/pre-commit $$(git rev-parse --git-dir)/hooks/pre-commit
-	@chmod +x $$(git rev-parse --git-dir)/hooks/pre-commit
-	@echo "✓ Pre-commit hook installed"
-
-.PHONY: package
-package:
-	@echo "Creating MiyooPod release package..."
-	@read -p "Enter version (e.g., 1.0.0): " VERSION; \
-	read -p "Enter changelog: " CHANGELOG; \
-	if [ -z "$$VERSION" ]; then \
-		echo "Error: Version cannot be empty"; \
-		exit 1; \
-	fi; \
-	echo "Updating APP_VERSION to $$VERSION..."; \
-	go run scripts/update-version.go $$VERSION; \
-	echo "Building app..."; \
-	go run scripts/build-inject.go; \
-	CC=arm-linux-gnueabihf-gcc CGO_ENABLED=1 GOARCH=arm GOOS=linux go build -o App/MiyooPod/MiyooPod src/*.go; \
-	echo "Building updater..."; \
-	CC=arm-linux-gnueabihf-gcc CGO_ENABLED=1 GOARCH=arm GOOS=linux go build -o App/MiyooPod/updater_new updater/*.go; \
-	echo "Creating release directory..."; \
-	mkdir -p releases; \
-	echo "Packaging release..."; \
-	cd App && zip -r ../releases/MiyooPod-$$VERSION.zip MiyooPod && cd ..; \
-	cp releases/MiyooPod-$$VERSION.zip releases/MiyooPod.zip; \
-	echo "Updating version.json with checksum..."; \
-	go run scripts/update-version.go $$VERSION releases/MiyooPod.zip $$CHANGELOG; \
-	echo "✓ Release package created: releases/MiyooPod-$$VERSION.zip"; \
-	echo "✓ Latest version copied to: releases/MiyooPod.zip"; \
-	echo "✓ version.json updated with checksum and changelog"
+package: build
+	sh scripts/package.sh

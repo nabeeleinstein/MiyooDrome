@@ -135,10 +135,10 @@ func (app *MiyooPod) drawLogoSplash() {
 	logoScale := 0.6 // Scale down to ~150px width
 	app.drawLogo(SCREEN_WIDTH/2, SCREEN_HEIGHT/2-60, logoScale, false)
 
-	// Draw "MiyooPod" title below the logo
+	// Draw "MiyooDrome" title below the logo
 	app.DC.SetFontFace(app.FontTitle)
 	app.DC.SetHexColor(app.CurrentTheme.HeaderTxt)
-	app.DC.DrawStringWrapped("MiyooPod", SCREEN_WIDTH/2, SCREEN_HEIGHT/2+100, 0.5, 0.5, 600, 1.5, gg.AlignCenter)
+	app.DC.DrawStringWrapped("MiyooDrome", SCREEN_WIDTH/2, SCREEN_HEIGHT/2+100, 0.5, 0.5, 600, 1.5, gg.AlignCenter)
 
 	// Draw "Loading..." text
 	app.DC.SetFontFace(app.FontSmall)

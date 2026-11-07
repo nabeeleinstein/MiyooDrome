@@ -7,7 +7,7 @@ import (
 	"time"
 )
 
-const PLAYBACK_STATE_PATH = "/mnt/SDCARD/Media/Music/.miyoopod_playback.json"
+const PLAYBACK_STATE_PATH = appDataDir + "/playback.json"
 
 // PlaybackState stores queue and playback position for session persistence
 type PlaybackState struct {

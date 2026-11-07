@@ -11,10 +11,10 @@ import (
 // buildRootMenu creates the top-level Music menu
 func (app *MiyooPod) buildRootMenu() *MenuScreen {
 	root := &MenuScreen{
-		Title: "MiyooPod",
+		Title: "MiyooDrome",
 	}
 
-	items := []*MenuItem{}
+	items := []*MenuItem{app.navRootItem(root)}
 
 	// Now Playing (only shown when something is playing)
 	// This will be dynamically added/removed in refreshRootMenu
@@ -90,9 +90,6 @@ func (app *MiyooPod) buildRootMenu() *MenuScreen {
 			},
 		})
 	}
-
-	// Browse your Navidrome library using the native SDL menu.
-	items = append(items, app.navRootItem(root))
 
 	// About
 	items = append(items, &MenuItem{
@@ -321,26 +318,6 @@ func (app *MiyooPod) buildSettingsMenuItems(root *MenuScreen) []*MenuItem {
 		},
 	})
 
-	// Check for Updates
-	items = append(items, &MenuItem{
-		Label: "Check for Updates",
-		Action: func() {
-			app.manualCheckForUpdates()
-		},
-	})
-
-	// Update Notifications toggle
-	updateNotifStatus := "Off"
-	if app.UpdateNotifications {
-		updateNotifStatus = "On"
-	}
-	items = append(items, &MenuItem{
-		Label: "Update Notifications: " + updateNotifStatus,
-		Action: func() {
-			app.toggleUpdateNotifications()
-		},
-	})
-
 	// Clear App Data
 	items = append(items, &MenuItem{
 		Label: "Clear App Data",
@@ -433,6 +410,10 @@ func (app *MiyooPod) handleMenuKey(key Key) {
 			app.cancelSearch()
 		}
 		if item.Submenu != nil {
+			if item.Submenu.ReloadOnOpen {
+				item.Submenu.SelIndex, item.Submenu.ScrollOff = 0, 0
+				item.Submenu.Built = false
+			}
 			if !item.Submenu.Built && item.Submenu.Builder != nil {
 				item.Submenu.Items = item.Submenu.Builder()
 				item.Submenu.Built = true
@@ -441,7 +422,7 @@ func (app *MiyooPod) handleMenuKey(key Key) {
 			app.MenuStack = append(app.MenuStack, item.Submenu)
 			// Track menu navigation with title as screen name
 			screenName := item.Submenu.Title
-			if screenName == "MiyooPod" || screenName == "" {
+			if screenName == "MiyooDrome" || screenName == "" {
 				screenName = "home"
 			}
 			TrackPageView(screenName, map[string]interface{}{
@@ -462,7 +443,7 @@ func (app *MiyooPod) handleMenuKey(key Key) {
 			if len(app.MenuStack) > 0 {
 				current := app.MenuStack[len(app.MenuStack)-1]
 				screenName := current.Title
-				if screenName == "MiyooPod" || screenName == "" {
+				if screenName == "MiyooDrome" || screenName == "" {
 					screenName = "home"
 				}
 				TrackPageView(screenName, map[string]interface{}{

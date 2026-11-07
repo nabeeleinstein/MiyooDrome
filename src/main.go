@@ -1,11 +1,11 @@
 package main
 
 /*
-#cgo CFLAGS: -I/root/include/SDL2 -O2 -w -D_GNU_SOURCE=1 -D_REENTRANT
-#cgo LDFLAGS: -L/root/lib -Wl,-rpath-link,/root/lib -Wl,-rpath,'$ORIGIN' -Wl,--unresolved-symbols=ignore-in-shared-libs -lSDL2 -lSDL2_mixer -lpthread
+#cgo CFLAGS: -O2 -D_GNU_SOURCE=1 -D_REENTRANT
+#cgo LDFLAGS: -L${SRCDIR}/../libs -lSDL2 -lSDL2_mixer -lpthread
 #include <stdlib.h>
-#include "main.c"
-#include "audio.c"
+#include <string.h>
+#include "native.h"
 */
 import "C"
 
@@ -33,7 +33,7 @@ func (app *MiyooPod) Init() {
 
 	// Default: local logs disabled
 	app.LocalLogsEnabled = true
-	app.SentryEnabled = true // Default: developer logs enabled
+	app.SentryEnabled = false
 
 	// Initialize PostHog client early so C logs during SDL init are captured
 	app.initSentry()
@@ -81,7 +81,6 @@ func (app *MiyooPod) Init() {
 
 	// Power management defaults
 	app.AutoLockMinutes = 3 // Auto-lock after 3 minutes of inactivity
-	app.UpdateNotifications = true // Default: show update prompts
 	app.LastActivityTime = time.Now()
 
 	// Pre-render digit sprites for fast time display (bypass gg in hot path)
@@ -104,13 +103,6 @@ func (app *MiyooPod) Init() {
 
 	// Draw splash screen with logo (now using restored theme if available)
 	app.drawLogoSplash()
-
-	// Check for updates asynchronously (don't block startup)
-	app.VersionCheckDone = make(chan struct{})
-	go func() {
-		app.checkVersion()
-		close(app.VersionCheckDone)
-	}()
 
 	// Start power button monitor (reads directly from /dev/input/event0)
 	app.startPowerButtonMonitor()
@@ -269,17 +261,6 @@ func main() {
 	// Draw initial menu
 	app.drawCurrentScreen()
 
-	// Check for update status from a previous OTA update
-	app.handleUpdateStatus()
-
-	// Wait for async version check to complete, then show update prompt if needed
-	go func() {
-		<-app.VersionCheckDone
-		if app.UpdateAvailable && app.UpdateNotifications && app.Running {
-			app.showUpdatePrompt()
-		}
-	}()
-
 	// Main loop: poll SDL events on main thread (required by SDL2)
 	// SDL_PollEvent MUST run on the thread that called SDL_Init (LockOSThread in init)
 	// Sleep between polls to keep CPU usage low (replaces old runtime.Gosched spin loop)
@@ -414,11 +395,6 @@ func (app *MiyooPod) handleKey(key Key) {
 	// SELECT + START = quit
 	if key == START && app.SelectKeyPressed {
 		app.Running = false
-		return
-	}
-
-	// If update prompt is showing, it consumes all keys
-	if app.handleUpdatePromptKey(key) {
 		return
 	}
 
@@ -576,13 +552,6 @@ func (app *MiyooPod) drawCurrentScreen() {
 	// Draw power exit warning overlay if holding power button
 	if app.PowerExitWarning {
 		app.drawPowerExitWarning()
-	}
-
-	// Draw update prompt overlay if showing
-	if app.ShowingUpdatePrompt {
-		app.drawUpdatePromptOverlay()
-		// drawUpdatePromptOverlay calls triggerRefresh, so skip the one below
-		return
 	}
 
 	// Restore brightness now that overlay is gone (avoids bright lock overlay flash)

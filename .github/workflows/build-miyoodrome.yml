@@ -1,71 +1,47 @@
-name: Build MiyooDrome (ARM / OnionOS)
-
+name: Build MiyooDrome for OnionOS
 on:
-  workflow_dispatch:
   push:
     branches: [main]
-    paths:
-      - 'src/**'
-      - 'navcore/**'
-      - 'go.mod'
-      - 'go.sum'
-      - '.github/workflows/build-miyoodrome.yml'
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
 
 jobs:
-  native-arm-build:
+  handheld:
     runs-on: ubuntu-24.04
-    permissions:
-      contents: read
     steps:
-      - name: Check out the fork
-        uses: actions/checkout@v4
-      - name: Install Go
-        uses: actions/setup-go@v5
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
         with:
-          go-version-file: go.mod
-          cache: true
-      - name: Install ARM hard-float cross toolchain and SDL headers
+          go-version: '1.25.4'
+      - name: Test the Subsonic client
+        run: make test
+      - name: Prepare cross-compiler and SDL headers
+        working-directory: ${{ runner.temp }}
         run: |
-          sudo apt-get update
-          sudo apt-get install -y gcc-arm-linux-gnueabihf libc6-dev-armhf-cross libsdl2-dev libsdl2-mixer-dev zip
-          test -f /usr/include/SDL2/SDL.h
-          test -f /usr/include/SDL2/SDL_mixer.h
-          sudo mkdir -p /root/include/SDL2 /root/lib
-          sudo cp -a /usr/include/SDL2/. /root/include/SDL2/
-          sudo cp -a libs/. /root/lib/
-          sudo chmod 755 /root /root/include /root/include/SDL2 /root/lib
-          arm-linux-gnueabihf-gcc --version | head -1
-      - name: Unit tests (host)
-        run: go test ./navcore -count=1 -v
-      - name: Compile real MiyooDrome binary
-        env:
-          GOOS: linux
-          GOARCH: arm
-          GOARM: '7'
-          CGO_ENABLED: '1'
-          CC: arm-linux-gnueabihf-gcc
-          CGO_LDFLAGS_ALLOW: '-Wl,.*'
+          curl -fsSL --retry 3 -o zig.tar.xz https://ziglang.org/download/0.13.0/zig-linux-x86_64-0.13.0.tar.xz
+          curl -fsSL --retry 3 -o sdl.tar.gz https://www.libsdl.org/release/SDL2-2.28.5.tar.gz
+          curl -fsSL --retry 3 -o mixer.tar.gz https://www.libsdl.org/projects/SDL_mixer/release/SDL2_mixer-2.6.3.tar.gz
+          sha256sum -c <<'SUMS'
+          d45312e61ebcc48032b77bc4cf7fd6915c11fa16e4aad116b66c9468211230ea  zig.tar.xz
+          332cb37d0be20cb9541739c61f79bae5a477427d79ae85e352089afdaf6666e4  sdl.tar.gz
+          7a6ba86a478648ce617e3a5e9277181bc67f7ce9876605eea6affd4a0d6eea8f  mixer.tar.gz
+          SUMS
+          tar xf zig.tar.xz
+          tar xf sdl.tar.gz SDL2-2.28.5/include
+          tar xf mixer.tar.gz SDL2_mixer-2.6.3/include
+          echo "$PWD/zig-linux-x86_64-0.13.0" >> "$GITHUB_PATH"
+          echo "CGO_CFLAGS=-O2 -I$PWD/SDL2-2.28.5/include -I$PWD/SDL2_mixer-2.6.3/include" >> "$GITHUB_ENV"
+      - name: Build and verify install ZIP
         run: |
-          go build -trimpath -o App/MiyooPod/MiyooPod ./src
-          file App/MiyooPod/MiyooPod
-          readelf -h App/MiyooPod/MiyooPod | grep -E 'Class:|Machine:'
-          test "$(readelf -h App/MiyooPod/MiyooPod | awk '/Machine:/ {print $2}')" = 'ARM'
-      - name: Package native app
-        run: |
-          mkdir -p dist/App
-          cp -a App/MiyooPod dist/App/
-          cp -a libs dist/App/MiyooPod/libs
-          chmod +x dist/App/MiyooPod/MiyooPod dist/App/MiyooPod/launch.sh
-          mkdir -p dist/App/MiyooPod/data
-          cp INSTALL.md dist/INSTALL.md
-          cp LICENSE dist/LICENSE
-          (cd dist && zip -qr ../MiyooDrome-Native-ARM.zip App INSTALL.md LICENSE)
-          sha256sum MiyooDrome-Native-ARM.zip > MiyooDrome-Native-ARM.zip.sha256
-      - name: Upload installable ZIP
-        uses: actions/upload-artifact@v4
+          make package
+          readelf -h App/MiyooDrome/MiyooDrome | grep 'Machine:.*ARM'
+          readelf -l App/MiyooDrome/MiyooDrome | grep '/lib/ld-linux-armhf.so.3'
+          unzip -tq dist/MiyooDrome-OnionOS.zip
+      - uses: actions/upload-artifact@v4
         with:
-          name: MiyooDrome-Native-ARM
-          path: |
-            MiyooDrome-Native-ARM.zip
-            MiyooDrome-Native-ARM.zip.sha256
+          name: MiyooDrome-OnionOS
+          path: dist/MiyooDrome-OnionOS.zip
           if-no-files-found: error

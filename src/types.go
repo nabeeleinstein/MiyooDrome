@@ -11,7 +11,7 @@ import (
 
 // App metadata
 const (
-	APP_VERSION = "0.0.8"
+	APP_VERSION = "0.2.0"
 	APP_AUTHOR  = "Danilo Fragoso"
 	SUPPORT_URL = "https://github.com/danfragoso/miyoopod"
 )
@@ -21,9 +21,10 @@ const SCREEN_WIDTH = 640
 const SCREEN_HEIGHT = 480
 
 // Music source
-const MUSIC_ROOT = "/mnt/SDCARD/Media/Music/"
-const LIBRARY_JSON_PATH = "/mnt/SDCARD/Media/Music/.miyoopod_library.json"
-const ARTWORK_DIR = "/mnt/SDCARD/Media/Music/.miyoopod_artwork/"
+const appDataDir = "/mnt/SDCARD/App/MiyooDrome/data"
+const MUSIC_ROOT = appDataDir + "/music"
+const LIBRARY_JSON_PATH = appDataDir + "/library.json"
+const ARTWORK_DIR = appDataDir + "/artwork/"
 
 // UI layout constants (at 640x480 native resolution)
 const (
@@ -556,6 +557,7 @@ type MenuScreen struct {
 	Parent    *MenuScreen
 	Builder   func() []*MenuItem
 	Built     bool
+	ReloadOnOpen bool
 }
 
 // --- Now Playing state ---
@@ -723,13 +725,6 @@ type MiyooPod struct {
 	InstallationID   string // Unique ID for this installation
 	LocalLogsEnabled bool   // Whether to write logs to file
 	SentryEnabled    bool   // Whether to send events to Sentry
-
-	// Update state
-	UpdateAvailable     bool          // Whether an update is available
-	UpdateInfo          *VersionInfo  // Remote version info when update is available
-	UpdateNotifications bool          // Whether to show auto update popup on launch
-	VersionCheckDone    chan struct{} // Closed when async version check completes
-	ShowingUpdatePrompt bool          // True when update prompt overlay is visible
 
 	// Seek state (fast forward / rewind on Now Playing)
 	SeekHeld      bool      // Whether L/R is currently held down

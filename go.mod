@@ -1,4 +1,4 @@
-module github.com/danfragoso/miyoopod
+module github.com/nabeeleinstein/MiyooDrome
 
 go 1.22.2
 

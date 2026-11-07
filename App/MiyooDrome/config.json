@@ -1,0 +1,7 @@
+{
+  "label": "MiyooDrome",
+  "icon": "./assets/icn.png",
+  "launch": "launch.sh",
+  "description": "Navidrome music player",
+  "version": "0.2.0"
+}

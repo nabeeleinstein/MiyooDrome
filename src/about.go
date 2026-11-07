@@ -17,7 +17,7 @@ func (app *MiyooPod) showAboutScreen() {
 	// Title
 	dc.SetFontFace(app.FontTitle)
 	dc.SetHexColor(app.CurrentTheme.HeaderTxt)
-	dc.DrawStringAnchored("About MiyooPod", SCREEN_WIDTH/2, 30, 0.5, 0.5)
+	dc.DrawStringAnchored("About MiyooDrome", SCREEN_WIDTH/2, 30, 0.5, 0.5)
 
 	// Version and author info
 	dc.SetFontFace(app.FontMenu)
@@ -27,7 +27,7 @@ func (app *MiyooPod) showAboutScreen() {
 	dc.DrawStringAnchored("Version: "+APP_VERSION, SCREEN_WIDTH/2, float64(yPos), 0.5, 0.5)
 
 	yPos += 30
-	dc.DrawStringAnchored("Created by: "+APP_AUTHOR, SCREEN_WIDTH/2, float64(yPos), 0.5, 0.5)
+	dc.DrawStringAnchored("MiyooPod engine by "+APP_AUTHOR, SCREEN_WIDTH/2, float64(yPos), 0.5, 0.5)
 
 	yPos += 40
 	dc.SetFontFace(app.FontSmall)

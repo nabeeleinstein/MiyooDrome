@@ -1,0 +1,5 @@
+/App/MiyooDrome/MiyooDrome
+/App/MiyooDrome/data/
+/App/MiyooDrome/*.log
+/dist/
+__pycache__/

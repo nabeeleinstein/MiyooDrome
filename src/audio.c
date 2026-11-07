@@ -1,5 +1,7 @@
+#include "native.h"
 #include "SDL.h"
 #include "SDL_mixer.h"
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -18,9 +20,8 @@ int audio_init() {
     c_log("audio_init entered");
 
     c_log("calling Mix_OpenAudio...");
-    // Increased buffer to 524288 (512KB) to handle high-bitrate files (>9MB)
-    // Live albums and 320kbps MP3s need larger buffer to prevent SD card read starvation
-    if (Mix_OpenAudio(44100, MIX_DEFAULT_FORMAT, 2, 524288) < 0) {
+    // SDL stores the buffer length in a 16-bit sample count.
+    if (Mix_OpenAudio(44100, MIX_DEFAULT_FORMAT, 2, 4096) < 0) {
         c_logf("Mix_OpenAudio failed: %s", SDL_GetError());
         return -1;
     }
@@ -177,13 +178,6 @@ int audio_check_finished() {
     return 0;
 }
 
-typedef struct {
-    double position;
-    double duration;
-    int is_playing;
-    int is_paused;
-    int finished;
-} AudioState;
 
 void audio_get_state(AudioState *state) {
     state->position = 0.0;
