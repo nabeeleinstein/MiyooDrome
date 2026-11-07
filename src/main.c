@@ -10,7 +10,6 @@
 
 // Forward declarations for Go functions
 extern void GoLogMsg(char* msg);
-extern void DetectDevice(int width, int height);
 
 const int RENDER_WIDTH = 640;
 const int RENDER_HEIGHT = 480;
@@ -88,21 +87,17 @@ int init() {
             display_height = vinfo.yres;
             c_logd("Detected FB resolution width: %d", display_width);
             c_logd("Detected FB resolution height: %d", display_height);
-            
-            // Notify Go about detected device
-            DetectDevice(display_width, display_height);
+
         } else {
             c_log("Could not get FB info, using default 640x480");
             display_width = 640;
             display_height = 480;
-            DetectDevice(display_width, display_height);
         }
         close(fb_fd);
     } else {
         c_log("Could not open /dev/fb0, using default 640x480");
         display_width = 640;
         display_height = 480;
-        DetectDevice(display_width, display_height);
     }
 
     c_log("Creating window...");

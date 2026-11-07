@@ -13,7 +13,8 @@ The password is masked during entry. The player verifies the login before saving
 
 ## Browse, play, and download
 
-- Open **Search** from the main menu or the Navidrome menu. Type an artist, album, or song using the D-pad keyboard and press **START**. Albums and artists open their menus. Songs start playback.
+- Open **Search** from the main menu. Type an artist, album, or song using the D-pad keyboard and press **START**. Albums and artists open their menus. Songs start playback.
+- Open **Local library** to browse scanned music, run **Scan Library**, or use **Fetch Album Art** for missing local covers. Navidrome artwork still loads automatically.
 - Inside an album, **Play album** queues the tracks in disc and track order. Inside an artist, **Play all songs** and **Shuffle artist** queue that artist’s credited tracks from the albums returned by Navidrome.
 - **Download album** saves the complete album to the SD card. The progress screen shows the current track. **B** cancels. Start the download again to reuse completed tracks. Finished albums appear in **Downloaded albums** on the main menu and can be played without Wi-Fi or a library rescan.
 - Online albums and Now Playing request the artwork supplied by Navidrome. Opening an album or downloading it caches its available cover on the card.

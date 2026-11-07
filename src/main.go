@@ -32,14 +32,9 @@ func (app *MiyooPod) Init() {
 	// Set global reference for logger
 	globalApp = app
 
-	// Default: local logs disabled
+	// Enable local diagnostics until saved preferences load.
 	app.LocalLogsEnabled = true
-	app.SentryEnabled = false
-
-	// Initialize PostHog client early so C logs during SDL init are captured
-	app.initSentry()
-
-	logMsg("INFO: Initializing MiyooPod...")
+	logMsg("INFO: Initializing MiyooDrome...")
 	logMsg("INFO: SDL init...")
 	if C.init() != 0 {
 		logMsg("FATAL: SDL init failed!")
@@ -114,7 +109,7 @@ func (app *MiyooPod) Init() {
 		logMsg(fmt.Sprintf("ERROR: Failed to generate icon: %v", err))
 	}
 
-	logMsg("INFO: MiyooPod init OK!")
+	logMsg("INFO: MiyooDrome init OK!")
 }
 
 func (app *MiyooPod) loadFonts() {
@@ -171,7 +166,7 @@ func createApp() *MiyooPod {
 }
 
 func main() {
-	// Global panic recovery — sends crash report synchronously before dying
+	// Record the stack locally before propagating a panic.
 	defer func() {
 		if r := recover(); r != nil {
 			panicMsg := fmt.Sprintf("%v", r)
@@ -186,9 +181,6 @@ func main() {
 				logFile.Sync()
 			}
 
-			// Send crash report synchronously — blocks until HTTP completes
-			sendCrashReport("go_panic", panicMsg, stackTrace)
-
 			panic(r) // Re-panic to show error
 		}
 	}()
@@ -197,7 +189,7 @@ func main() {
 	installCrashHandler()
 
 	logMsg("\n\n\n-----------")
-	logMsg("INFO: MiyooPod started!")
+	logMsg("INFO: MiyooDrome started!")
 
 	app := createApp()
 	app.Init()
@@ -267,9 +259,6 @@ func main() {
 
 	// Start inactivity monitor for auto-lock
 	go app.startInactivityMonitor()
-
-	// Track app opened
-	TrackAppLifecycle("app_opened", nil)
 
 	// Draw initial menu
 	app.drawCurrentScreen()
@@ -356,26 +345,14 @@ func main() {
 	// Restore original CPU governor
 	app.restoreCPUGovernor()
 
-	// Track app closed
-	TrackAppLifecycle("app_closed", nil)
-
 	// Cleanup: close refresh channel to unblock RunUI goroutine
 	close(app.RefreshChan)
 
 	sdlCleanup()
 }
 
-// setScreen changes the current screen and tracks the page view
 func (app *MiyooPod) setScreen(screen ScreenType) {
-	app.setScreenWithContext(screen, nil)
-}
-
-// setScreenWithContext changes screen with additional tracking context
-func (app *MiyooPod) setScreenWithContext(screen ScreenType, properties map[string]interface{}) {
-	if app.CurrentScreen != screen {
-		app.CurrentScreen = screen
-		TrackPageView(screen.String(), properties)
-	}
+	app.CurrentScreen = screen
 }
 
 // handleKeyRelease handles key release events

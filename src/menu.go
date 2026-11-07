@@ -8,139 +8,51 @@ import (
 	"github.com/fogleman/gg"
 )
 
-// buildRootMenu creates the top-level Music menu
 func (app *MiyooPod) buildRootMenu() *MenuScreen {
-	root := &MenuScreen{
-		Title: "MiyooDrome",
+	root := &MenuScreen{Title: "MiyooDrome"}
+	local := &MenuScreen{Title: "Local library", Parent: root}
+	local.Builder = func() []*MenuItem { return app.localLibraryItems(local) }
+	settings := &MenuScreen{Title: "Settings", Parent: root}
+	settings.Builder = func() []*MenuItem { return app.buildSettingsMenuItems(settings) }
+
+	root.Items = []*MenuItem{
+		app.navRootItem(root),
+		{Label: "Search", Action: app.openNavSearch},
+		app.downloadedMenu(root),
+		app.savedSongsMenu(root),
+		{Label: local.Title, HasSubmenu: true, Submenu: local},
+		app.storageMenu(root),
+		{Label: settings.Title, HasSubmenu: true, Submenu: settings},
+		{Label: "About", Action: app.showAboutScreen},
+		{Label: "Exit", Action: func() { audioStop(); app.Running = false }},
 	}
-
-	items := []*MenuItem{app.navRootItem(root), {Label: "Search", Action: app.openNavSearch}, app.downloadedMenu(root), app.savedSongsMenu(root), app.storageMenu(root)}
-
-	// Now Playing (only shown when something is playing)
-	// This will be dynamically added/removed in refreshRootMenu
-
-	// Playlists
-	if len(app.Library.Playlists) > 0 {
-		playlistMenu := &MenuScreen{
-			Title:  "Playlists",
-			Parent: root,
-			Builder: func() []*MenuItem {
-				return app.buildPlaylistMenuItems(root)
-			},
-		}
-		items = append(items, &MenuItem{
-			Label:      "Playlists",
-			HasSubmenu: true,
-			Submenu:    playlistMenu,
-		})
-	}
-
-	// Artists
-	if len(app.Library.Artists) > 0 {
-		artistMenu := &MenuScreen{
-			Title:  "Artists",
-			Parent: root,
-			Builder: func() []*MenuItem {
-				return app.buildArtistMenuItems(root)
-			},
-		}
-		items = append(items, &MenuItem{
-			Label:      "Artists",
-			HasSubmenu: true,
-			Submenu:    artistMenu,
-		})
-	}
-
-	// Albums
-	if len(app.Library.Albums) > 0 {
-		albumMenu := &MenuScreen{
-			Title:  "Albums",
-			Parent: root,
-			Builder: func() []*MenuItem {
-				return app.buildAlbumMenuItems(root)
-			},
-		}
-		items = append(items, &MenuItem{
-			Label:      "Albums",
-			HasSubmenu: true,
-			Submenu:    albumMenu,
-		})
-	}
-
-	// Songs
-	if len(app.Library.Tracks) > 0 {
-		songMenu := &MenuScreen{
-			Title:  "Songs",
-			Parent: root,
-			Builder: func() []*MenuItem {
-				return app.buildSongMenuItems()
-			},
-		}
-		items = append(items, &MenuItem{
-			Label:      "Songs",
-			HasSubmenu: true,
-			Submenu:    songMenu,
-		})
-
-		// Shuffle All
-		items = append(items, &MenuItem{
-			Label: "Shuffle All",
-			Action: func() {
-				app.shuffleAllAndPlay()
-			},
-		})
-	}
-
-	// About
-	items = append(items, &MenuItem{
-		Label: "About",
-		Action: func() {
-			app.showAboutScreen()
-		},
-	})
-
-	// Settings
-	settingsMenu := &MenuScreen{
-		Title:  "Settings",
-		Parent: root,
-		Builder: func() []*MenuItem {
-			return app.buildSettingsMenuItems(root)
-		},
-	}
-	items = append(items, &MenuItem{
-		Label:      "Settings",
-		HasSubmenu: true,
-		Submenu:    settingsMenu,
-	})
-
-	// Scan Library
-	items = append(items, &MenuItem{
-		Label: "Scan Library",
-		Action: func() {
-			app.rescanLibrary()
-		},
-	})
-
-	// Fetch Album Art
-	items = append(items, &MenuItem{
-		Label: "Fetch Album Art",
-		Action: func() {
-			app.scanAlbumArt()
-		},
-	})
-
-	// Exit
-	items = append(items, &MenuItem{
-		Label: "Exit",
-		Action: func() {
-			audioStop()
-			app.Running = false
-		},
-	})
-
-	root.Items = items
 	root.Built = true
 	return root
+}
+
+func (app *MiyooPod) localLibraryItems(local *MenuScreen) []*MenuItem {
+	var items []*MenuItem
+	addPage := func(title string, build func() []*MenuItem) {
+		page := &MenuScreen{Title: title, Parent: local, Builder: build}
+		items = append(items, &MenuItem{Label: title, HasSubmenu: true, Submenu: page})
+	}
+	if len(app.Library.Playlists) > 0 {
+		addPage("Playlists", func() []*MenuItem { return app.buildPlaylistMenuItems(local) })
+	}
+	if len(app.Library.Artists) > 0 {
+		addPage("Artists", func() []*MenuItem { return app.buildArtistMenuItems(local) })
+	}
+	if len(app.Library.Albums) > 0 {
+		addPage("Albums", func() []*MenuItem { return app.buildAlbumMenuItems(local) })
+	}
+	if len(app.Library.Tracks) > 0 {
+		addPage("Songs", app.buildSongMenuItems)
+		items = append(items, &MenuItem{Label: "Shuffle All", Action: app.shuffleAllAndPlay})
+	}
+	return append(items,
+		&MenuItem{Label: "Scan Library", Action: func() { app.rescanLibrary(local) }},
+		&MenuItem{Label: "Fetch Album Art", Action: app.scanAlbumArt},
+	)
 }
 
 func (app *MiyooPod) buildPlaylistMenuItems(root *MenuScreen) []*MenuItem {
@@ -290,18 +202,6 @@ func (app *MiyooPod) buildSettingsMenuItems(root *MenuScreen) []*MenuItem {
 		},
 	})
 
-	// Developer Logs (Sentry) option
-	sentryStatus := "Off"
-	if app.SentryEnabled {
-		sentryStatus = "On"
-	}
-	items = append(items, &MenuItem{
-		Label: "Developer Logs: " + sentryStatus,
-		Action: func() {
-			app.toggleSentry()
-		},
-	})
-
 	// Auto Screen Lock option
 	autoLockStatus := "Off"
 	if app.AutoLockMinutes > 0 {
@@ -424,14 +324,6 @@ func (app *MiyooPod) handleMenuKey(key Key) {
 			}
 			item.Submenu.Parent = current
 			app.MenuStack = append(app.MenuStack, item.Submenu)
-			// Track menu navigation with title as screen name
-			screenName := item.Submenu.Title
-			if screenName == "MiyooDrome" || screenName == "" {
-				screenName = "home"
-			}
-			TrackPageView(screenName, map[string]interface{}{
-				"menu_depth": len(app.MenuStack),
-			})
 		} else if item.Action != nil {
 			item.Action()
 		}
@@ -443,18 +335,7 @@ func (app *MiyooPod) handleMenuKey(key Key) {
 			app.cancelSearch()
 		} else if len(app.MenuStack) > 1 {
 			app.MenuStack = app.MenuStack[:len(app.MenuStack)-1]
-			// Track navigation back
-			if len(app.MenuStack) > 0 {
-				current := app.MenuStack[len(app.MenuStack)-1]
-				screenName := current.Title
-				if screenName == "MiyooDrome" || screenName == "" {
-					screenName = "home"
-				}
-				TrackPageView(screenName, map[string]interface{}{
-					"menu_depth": len(app.MenuStack),
-					"action":     "back",
-				})
-			}
+
 		}
 	case MENU:
 		if app.SearchActive || app.SearchAllItems != nil {
@@ -905,7 +786,7 @@ func (app *MiyooPod) refreshRootMenu() {
 }
 
 // rescanLibrary performs a full library scan and rebuilds the menu
-func (app *MiyooPod) rescanLibrary() {
+func (app *MiyooPod) rescanLibrary(local *MenuScreen) {
 	// Stop any current playback
 	if app.Playing.State == StatePlaying {
 		audioStop()
@@ -914,7 +795,8 @@ func (app *MiyooPod) rescanLibrary() {
 
 	// Launch scan as background goroutine — menu rebuilds when done
 	app.startLibraryScan(func() {
-		app.RootMenu = app.buildRootMenu()
-		app.MenuStack = []*MenuScreen{app.RootMenu}
+		local.Built = false
+		local.SelIndex, local.ScrollOff = 0, 0
+		app.refreshRootMenu()
 	})
 }

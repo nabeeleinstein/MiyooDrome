@@ -30,7 +30,6 @@ text and source are available from https://www.mpg123.de/.
 | --- | --- |
 | github.com/dhowden/tag | BSD-2-Clause |
 | github.com/fogleman/gg | MIT License |
-| github.com/google/uuid | BSD-3-Clause |
 | github.com/skip2/go-qrcode | MIT License |
 | golang.org/x/image | BSD-3-Clause |
 | github.com/golang/freetype | FreeType License / GPLv2 |

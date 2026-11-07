@@ -10,6 +10,8 @@ MiyooDrome plays music from your Navidrome server on a Wi-Fi-connected Miyoo Min
 
 The [installation guide](INSTALL.md) covers keyboard controls, HTTPS, offline use and troubleshooting.
 
+Local songs, albums, artists, playlists, **Shuffle All**, **Scan Library** and **Fetch Album Art** are grouped under **Local library**.
+
 ## Playback and storage
 
 | Action | On the handheld |
@@ -25,10 +27,10 @@ The [installation guide](INSTALL.md) covers keyboard controls, HTTPS, offline us
 
 ## Credits and license
 
-MiyooDrome is based on **MiyooPod by Danilo Fragoso**, who created the handheld interface, controls and SDL2_mixer playback engine. This adaptation adds Navidrome sign-in, online browsing, search, cover art and downloads. The About screen links to the original project. [Original MiyooPod project](https://github.com/danfragoso/miyoopod) · [Upstream README](README_MIYOOPOD.md)
+MiyooDrome is based on **MiyooPod by Danilo Fragoso**, who created the handheld interface, controls and SDL2_mixer playback engine. This adaptation adds Navidrome sign-in, online browsing, search, cover art and downloads. The About screen links to the original project. [Original MiyooPod project](https://github.com/danfragoso/miyoopod) · [Upstream documentation](https://github.com/danfragoso/miyoopod#readme)
 
 The original MiyooPod code is copyright © 2026 Danilo Fragoso and is distributed under the MIT License. The install ZIP includes the original copyright notice and the third-party notices. [MIT License](LICENSE) · [Third-party credits and licenses](THIRD_PARTY_LICENSES.md)
 
 ## Build
 
-Use Go 1.25.4 and Zig 0.13.0. Set `CGO_CFLAGS` to include the SDL2 2.28.5 and SDL2_mixer 2.6.3 header directories, then run `make test package`. The ARM build produces `dist/MiyooDrome-OnionOS.zip`. The [build workflow](.github/workflows/build-miyoodrome.yml) lists the exact setup.
+Use Go 1.25.4, Zig 0.13.0 and an ARM-capable strip tool. Packaging uses `llvm-strip` by default. Set `ARM_STRIP` to another compatible tool such as `arm-none-eabi-strip` if needed. Set `CGO_CFLAGS` to include the SDL2 2.28.5 and SDL2_mixer 2.6.3 header directories, then run `make test package`. The ARM build produces `dist/MiyooDrome-OnionOS.zip`. The [build workflow](.github/workflows/build-miyoodrome.yml) lists the exact setup.

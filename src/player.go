@@ -73,9 +73,6 @@ func (app *MiyooPod) playCurrentQueueTrack() {
 	// A previous track may have ended while its replacement was downloading.
 	app.TrackEndPending = false
 
-	// Track song play for analytics
-	TrackSongPlayed(track)
-
 	app.Playing.Track = track
 	app.Playing.State = StatePlaying
 	app.Playing.Position = 0
@@ -266,7 +263,6 @@ func (app *MiyooPod) toggleShuffle() {
 		// Reset playback position to start of new shuffle order
 		app.Queue.CurrentIndex = 0
 		logMsg("INFO: Shuffle enabled")
-		TrackAction("shuffle_enabled", nil)
 	} else {
 		// When turning off shuffle, set CurrentIndex to physical position
 		if currentPhysicalIdx >= 0 {
@@ -274,7 +270,6 @@ func (app *MiyooPod) toggleShuffle() {
 		}
 		app.Queue.ShuffleOrder = nil
 		logMsg("INFO: Shuffle disabled")
-		TrackAction("shuffle_disabled", nil)
 	}
 	app.NPCacheDirty = true
 }
@@ -286,13 +281,10 @@ func (app *MiyooPod) cycleRepeat() {
 	switch app.Queue.Repeat {
 	case RepeatOff:
 		app.Queue.Repeat = RepeatAll
-		TrackAction("repeat_mode_changed", map[string]interface{}{"repeat_mode": "all"})
 	case RepeatAll:
 		app.Queue.Repeat = RepeatOne
-		TrackAction("repeat_mode_changed", map[string]interface{}{"repeat_mode": "one"})
 	case RepeatOne:
 		app.Queue.Repeat = RepeatOff
-		TrackAction("repeat_mode_changed", map[string]interface{}{"repeat_mode": "off"})
 	}
 	app.NPCacheDirty = true
 }
