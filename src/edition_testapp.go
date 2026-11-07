@@ -2,6 +2,7 @@
 
 package main
 
+const tryOnionKeyboard = true
 const appName = "MiyooDrome Test"
 const appFolder = "MiyooDromeTest"
 

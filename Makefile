@@ -1,6 +1,6 @@
 .PHONY: build build-test test package package-test
 test:
-	go test ./navcore -count=1
+	go test ./navcore ./internal/onionkeyboard -count=1
 
 # Supply the two SDL include directories via CGO_CFLAGS.
 build: player_output = App/MiyooDrome/MiyooDrome

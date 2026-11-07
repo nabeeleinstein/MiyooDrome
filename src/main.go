@@ -135,8 +135,10 @@ func (app *MiyooPod) RunUI() {
 		if !app.Running {
 			break
 		}
+		app.displayMu.Lock()
 		pixels := (*C.uchar)(unsafe.Pointer(&app.FB.Pix[0]))
 		C.refreshScreenPtr(pixels)
+		app.displayMu.Unlock()
 	}
 }
 
@@ -267,6 +269,14 @@ func main() {
 	// SDL_PollEvent MUST run on the thread that called SDL_Init (LockOSThread in init)
 	// Sleep between polls to keep CPU usage low (replaces old runtime.Gosched spin loop)
 	for app.Running {
+		if session := app.keyboardSession; session != nil {
+			select {
+			case result := <-session.done:
+				app.finishOnionKeyboard(result)
+			case <-time.After(50 * time.Millisecond):
+			}
+			continue
+		}
 		keyEvent := C_GetKeyPress()
 		if keyEvent != -1 {
 			if keyEvent < 0 {
@@ -289,6 +299,10 @@ func main() {
 				}
 				app.handleKey(key)
 			}
+		}
+
+		if app.keyboardSession != nil {
+			continue
 		}
 
 		// Software key repeat for held navigation keys.
@@ -336,6 +350,13 @@ func main() {
 		time.Sleep(sleepDur)
 	}
 
+	if session := app.keyboardSession; session != nil {
+		session.cancel()
+		<-session.done
+		app.keyboardSession = nil
+		app.keyboardActive.Store(false)
+		app.displayMu.Unlock()
+	}
 	if app.navTask != nil {
 		app.navTask.cancel()
 	}
@@ -357,6 +378,11 @@ func (app *MiyooPod) setScreen(screen ScreenType) {
 
 // handleKeyRelease handles key release events
 func (app *MiyooPod) handleKeyRelease(key Key) {
+	if key == A && app.CurrentScreen == ScreenSignIn && app.signIn.editOnRelease {
+		app.signIn.editOnRelease = false
+		app.startOnionKeyboard()
+		return
+	}
 	if key == SELECT {
 		app.SelectKeyPressed = false
 	}
@@ -588,6 +614,9 @@ func (app *MiyooPod) drawCurrentScreen() {
 
 	app.triggerRefresh()
 }
+
+func suspendPlayerVideo()     { C.suspend_player_video() }
+func resumePlayerVideo() bool { return C.resume_player_video() == 0 }
 
 func C_GetKeyPress() int {
 	return int(C.pollEvents())

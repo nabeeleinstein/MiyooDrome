@@ -29,7 +29,7 @@ func (app *MiyooPod) startInactivityMonitor() {
 		select {
 		case <-ticker.C:
 			// Skip if auto-lock is disabled or already locked
-			if app.AutoLockMinutes <= 0 || app.Locked {
+			if app.AutoLockMinutes <= 0 || app.Locked || app.keyboardActive.Load() {
 				continue
 			}
 

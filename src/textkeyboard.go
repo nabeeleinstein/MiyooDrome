@@ -2,10 +2,25 @@ package main
 
 import "unicode/utf8"
 
-type textKeyboard struct{ page, row, col int }
+type textKeyboard struct {
+	page, row, col int
+	qwerty         bool
+}
+
+func (f *textKeyboard) rows() [4]string {
+	if f.qwerty {
+		switch f.page {
+		case 0:
+			return [4]string{"1234567890", "qwertyuiop", "asdfghjkl ", "zxcvbnm./:"}
+		case 1:
+			return [4]string{"1234567890", "QWERTYUIOP", "ASDFGHJKL ", "ZXCVBNM./:"}
+		}
+	}
+	return loginKeys[f.page]
+}
 
 func (f *textKeyboard) move(key Key) bool {
-	rows := loginKeys[f.page]
+	rows := f.rows()
 	switch key {
 	case UP, DOWN:
 		step := 1
@@ -23,14 +38,14 @@ func (f *textKeyboard) move(key Key) bool {
 		f.col = (f.col + width + step) % width
 	case Y:
 		f.page = (f.page + 1) % len(loginKeys)
-		f.col = min(f.col, len(loginKeys[f.page][f.row])-1)
+		f.col = min(f.col, len(f.rows()[f.row])-1)
 	default:
 		return false
 	}
 	return true
 }
 
-func (app *MiyooPod) drawTextKeyboard(f *textKeyboard, value, hint, next string) {
+func (app *MiyooPod) drawKeyboardValue(value string) {
 	dc, theme := app.DC, app.CurrentTheme
 	dc.SetHexColor(theme.ProgBG)
 	dc.DrawRoundedRectangle(20, 91, 600, 44, 6)
@@ -45,10 +60,15 @@ func (app *MiyooPod) drawTextKeyboard(f *textKeyboard, value, hint, next string)
 		value = value[n:]
 	}
 	dc.DrawStringAnchored(value+"_", 32, 112, 0, 0.5)
+}
+
+func (app *MiyooPod) drawTextKeyboard(f *textKeyboard, value, hint, next string) {
+	app.drawKeyboardValue(value)
+	dc, theme := app.DC, app.CurrentTheme
 
 	dc.SetFontFace(app.FontSmall)
 	dc.DrawStringAnchored(app.truncateText(hint, 595, app.FontSmall), 24, 154, 0, 0.5)
-	for r, row := range loginKeys[f.page] {
+	for r, row := range f.rows() {
 		for c, ch := range row {
 			x, y := float64(20+60*c), float64(179+43*r)
 			dc.SetFontFace(app.FontMenu)
