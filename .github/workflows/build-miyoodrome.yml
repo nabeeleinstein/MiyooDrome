@@ -33,6 +33,7 @@ jobs:
           sudo mkdir -p /root/include/SDL2 /root/lib
           sudo cp -a /usr/include/SDL2/. /root/include/SDL2/
           sudo cp -a libs/. /root/lib/
+          sudo chmod 755 /root /root/include /root/include/SDL2 /root/lib
           arm-linux-gnueabihf-gcc --version | head -1
       - name: Unit tests (host)
         run: go test ./navcore -count=1 -v
