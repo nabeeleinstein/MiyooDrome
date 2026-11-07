@@ -3,9 +3,6 @@ package navcore
 import (
 	"context"
 	"encoding/hex"
-	"encoding/json"
-	"errors"
-	"fmt"
 	"os"
 	"path/filepath"
 	"sort"
@@ -48,8 +45,8 @@ func TemporaryTrack(root, path string) bool {
 	if !ManagedTrack(root, path) {
 		return false
 	}
-	_, err := os.Stat(pinPath(path))
-	return os.IsNotExist(err)
+	p, err := readPin(path, "")
+	return os.IsNotExist(err) || (err == nil && p.Filename != "" && !p.Pending)
 }
 
 type cacheFile struct {
@@ -137,10 +134,13 @@ func trimCache(root string, limit int64, active string) (int64, error) {
 	return removed, nil
 }
 
-func (c *Client) CacheForPlayback(ctx context.Context, root string, s Song, limit int64, active string) (string, error) {
+func (c *Client) CacheForPlayback(ctx context.Context, root, shared string, s Song, limit int64, active string) (string, error) {
 	storageMu.Lock()
 	defer storageMu.Unlock()
 	dir := c.MusicDir(root)
+	if path := PlayablePath(shared, dir, s.ID); path != FilePath(dir, s.ID) {
+		return path, nil
+	}
 	path, err := c.cacheSong(ctx, s, dir, func(reserve int64) error {
 		_, err := trimCache(root, limit-reserve, active)
 		return err
@@ -150,80 +150,6 @@ func (c *Client) CacheForPlayback(ctx context.Context, root string, s Song, limi
 		_ = os.Chtimes(path, now, now)
 	}
 	return path, err
-}
-
-func (c *Client) SaveSong(ctx context.Context, root string, s Song) error {
-	storageMu.Lock()
-	defer storageMu.Unlock()
-	path, err := c.CacheSong(ctx, s, c.MusicDir(root))
-	if err != nil {
-		return err
-	}
-	data, err := json.Marshal(s)
-	if err != nil {
-		return err
-	}
-	return writeAtomic(pinPath(path), data)
-}
-
-type SavedSong struct {
-	Song Song
-	Dir  string
-}
-
-func DownloadedSongs(root string) ([]SavedSong, error) {
-	paths, err := filepath.Glob(filepath.Join(root, "*", "saved", "*.json"))
-	if err != nil {
-		return nil, err
-	}
-	var songs []SavedSong
-	for _, p := range paths {
-		b, err := os.ReadFile(p)
-		if err != nil {
-			return nil, err
-		}
-		var s Song
-		if json.Unmarshal(b, &s) != nil || s.ID == "" {
-			continue
-		}
-		dir := filepath.Dir(filepath.Dir(p))
-		if pinPath(FilePath(dir, s.ID)) != p {
-			continue
-		}
-		if _, err := os.Stat(FilePath(dir, s.ID)); errors.Is(err, os.ErrNotExist) {
-			continue
-		} else if err != nil {
-			return nil, fmt.Errorf("reading downloaded song: %w", err)
-		}
-		songs = append(songs, SavedSong{s, dir})
-	}
-	sort.SliceStable(songs, func(i, j int) bool {
-		return strings.ToLower(songs[i].Song.Title) < strings.ToLower(songs[j].Song.Title)
-	})
-	return songs, nil
-}
-
-// ReadSavedSong supplies server metadata and local artwork to the offline library scanner.
-func ReadSavedSong(root, path string) (Song, string, bool) {
-	if !ManagedTrack(root, path) {
-		return Song{}, "", false
-	}
-	b, err := os.ReadFile(pinPath(path))
-	if err != nil {
-		return Song{}, "", false
-	}
-	var s Song
-	if json.Unmarshal(b, &s) != nil || s.ID == "" || FilePath(filepath.Dir(path), s.ID) != path {
-		return Song{}, "", false
-	}
-	id := s.CoverArt
-	if id == "" {
-		id = s.AlbumID
-	}
-	if id == "" {
-		id = s.ID
-	}
-	return s, artPath(filepath.Dir(path), id), true
 }
 
 // Run before any transfers on startup, so a hard power-off cannot strand partial MP3s.

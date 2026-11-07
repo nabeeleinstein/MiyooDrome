@@ -115,7 +115,7 @@ type SavedAlbum struct {
 	Dir   string `json:"-"`
 }
 
-func (c *Client) DownloadAlbum(ctx context.Context, root string, a Album, songs []Song, progress func(int, string)) error {
+func (c *Client) DownloadAlbum(ctx context.Context, root, shared string, a Album, songs []Song, progress func(int, string)) error {
 	if len(songs) == 0 {
 		return errors.New("album contains no tracks")
 	}
@@ -140,7 +140,7 @@ func (c *Client) DownloadAlbum(ctx context.Context, root string, a Album, songs 
 			progress(i, s.Title)
 		}
 		trackCtx, cancel := context.WithTimeout(ctx, 2*time.Minute)
-		err := c.SaveSong(trackCtx, root, s)
+		err := c.SaveSong(trackCtx, root, shared, s)
 		cancel()
 		if err != nil {
 			return fmt.Errorf("track %d of %d: %w", i+1, len(songs), err)
@@ -159,7 +159,7 @@ func (c *Client) DownloadAlbum(ctx context.Context, root string, a Album, songs 
 	return writeAtomic(filepath.Join(dir, "albums", fmt.Sprintf("%x.json", sha256.Sum256([]byte(a.ID)))), data)
 }
 
-func DownloadedAlbums(root string) ([]SavedAlbum, error) {
+func DownloadedAlbums(root, shared string) ([]SavedAlbum, error) {
 	paths, err := filepath.Glob(filepath.Join(root, "*", "albums", "*.json"))
 	if err != nil {
 		return nil, err
@@ -175,7 +175,18 @@ func DownloadedAlbums(root string) ([]SavedAlbum, error) {
 			continue
 		}
 		a.Dir = filepath.Dir(filepath.Dir(p))
-		albums = append(albums, a)
+		complete := true
+		for _, s := range a.Songs {
+			private := FilePath(a.Dir, s.ID)
+			path := PlayablePath(shared, a.Dir, s.ID)
+			if path == private && (TemporaryTrack(root, private) || !hasAudio(path)) {
+				complete = false
+				break
+			}
+		}
+		if complete {
+			albums = append(albums, a)
+		}
 	}
 	sort.SliceStable(albums, func(i, j int) bool {
 		return strings.ToLower(albums[i].Album.Name) < strings.ToLower(albums[j].Album.Name)

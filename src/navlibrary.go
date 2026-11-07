@@ -17,16 +17,31 @@ func navTracks(dir string, songs []navcore.Song, offline bool) []*Track {
 	tracks := make([]*Track, 0, len(songs))
 	for i := range songs {
 		s := &songs[i]
-		tracks = append(tracks, &Track{Path: navcore.FilePath(dir, s.ID), Title: s.Title, Artist: s.Artist, Album: s.Album, AlbumArtist: s.Artist, Duration: float64(s.Duration), TrackNum: s.Track, DiscNum: s.Disc, NavSong: s, Offline: offline})
+		tracks = append(tracks, &Track{NavDir: dir, Path: navcore.PlayablePath(SHARED_MUSIC_DIR, dir, s.ID), Title: s.Title, Artist: s.Artist, Album: s.Album, AlbumArtist: s.Artist, Duration: float64(s.Duration), TrackNum: s.Track, DiscNum: s.Disc, NavSong: s, Offline: offline})
 	}
 	return tracks
+}
+
+func (t *Track) navDir() string {
+	if t.NavDir != "" {
+		return t.NavDir
+	}
+	return filepath.Dir(t.Path)
+}
+
+func (t *Track) resolveNavPath() {
+	if t.NavSong != nil {
+		t.NavDir = t.navDir()
+		t.Path = navcore.PlayablePath(SHARED_MUSIC_DIR, t.NavDir, t.NavSong.ID)
+	}
 }
 
 func (app *MiyooPod) prepareNavTrack(t *Track) error {
 	if t.NavSong == nil {
 		return nil
 	}
-	if info, err := os.Stat(t.Path); err == nil && info.Size() > 1024 && info.Size() <= navcore.MaxTrackBytes {
+	t.resolveNavPath()
+	if info, err := os.Stat(t.Path); err == nil && info.Size() >= 1024 && info.Size() <= navcore.MaxTrackBytes {
 		now := time.Now()
 		_ = os.Chtimes(t.Path, now, now)
 		return nil
@@ -39,13 +54,13 @@ func (app *MiyooPod) prepareNavTrack(t *Track) error {
 		return err
 	}
 	dir := c.MusicDir(MUSIC_ROOT)
-	if t.Path != navcore.FilePath(dir, t.NavSong.ID) {
+	if t.NavDir != dir {
 		return errors.New("Sign in to the account that created this queue")
 	}
 	defer c.HTTP.CloseIdleConnections()
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
 	defer cancel()
-	_, err = c.CacheForPlayback(ctx, MUSIC_ROOT, *t.NavSong, app.cacheLimit(), app.activeMusicPath())
+	t.Path, err = c.CacheForPlayback(ctx, MUSIC_ROOT, SHARED_MUSIC_DIR, *t.NavSong, app.cacheLimit(), app.activeMusicPath())
 	return err
 }
 
@@ -138,7 +153,7 @@ func (app *MiyooPod) navAlbumActions(c *navcore.Client, dir string, a navcore.Al
 func (app *MiyooPod) downloadedMenu(root *MenuScreen) *MenuItem {
 	sub := &MenuScreen{Title: "Downloaded albums", Parent: root, ReloadOnOpen: true}
 	sub.Builder = func() []*MenuItem {
-		albums, err := navcore.DownloadedAlbums(MUSIC_ROOT)
+		albums, err := navcore.DownloadedAlbums(MUSIC_ROOT, SHARED_MUSIC_DIR)
 		if err != nil {
 			return app.navError(err.Error())
 		}
@@ -167,7 +182,7 @@ func trackPreview(t *Track) navPreview {
 	if id == "" {
 		id = s.ID
 	}
-	return navPreview{dir: filepath.Dir(t.Path), id: id, title: t.Album, artist: t.Artist, offline: t.Offline}
+	return navPreview{dir: t.navDir(), id: id, title: t.Album, artist: t.Artist, offline: t.Offline}
 }
 
 func (app *MiyooPod) navPlayArtist(c *navcore.Client, artist navcore.Artist, albums []navcore.Album, shuffle bool) {

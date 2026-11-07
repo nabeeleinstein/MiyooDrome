@@ -110,6 +110,7 @@ func (app *MiyooPod) restorePlaybackState() {
 			t = app.Library.TracksByPath[path]
 		}
 		if t != nil {
+			t.resolveNavPath()
 			pathToNewIdx[oldIdx] = len(tracks)
 			tracks = append(tracks, t)
 		}

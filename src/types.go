@@ -12,9 +12,9 @@ import (
 
 // App metadata
 const (
-	APP_VERSION = "0.3.0"
-	APP_AUTHOR  = "Danilo Fragoso"
-	SUPPORT_URL = "https://github.com/danfragoso/miyoopod"
+	APP_VERSION     = "0.3.1"
+	MIYOOPOD_AUTHOR = "Danilo Fragoso"
+	MIYOOPOD_URL    = "https://github.com/danfragoso/miyoopod"
 )
 
 // Display constants - identical to GaugeBoy
@@ -23,6 +23,7 @@ const SCREEN_HEIGHT = 480
 
 // Music source
 const appDataDir = "/mnt/SDCARD/App/MiyooDrome/data"
+const SHARED_MUSIC_DIR = "/mnt/SDCARD/Media/Music/MiyooDrome"
 const MUSIC_ROOT = appDataDir + "/music"
 const LIBRARY_JSON_PATH = appDataDir + "/library.json"
 const ARTWORK_DIR = appDataDir + "/artwork/"
@@ -449,6 +450,7 @@ func (r RepeatMode) String() string {
 // --- Music Library types ---
 
 type Track struct {
+	NavDir      string        `json:"nav_dir,omitempty"`
 	NavSong     *navcore.Song `json:"nav_song,omitempty"`
 	Offline     bool          `json:"offline,omitempty"`
 	Path        string        `json:"path"`

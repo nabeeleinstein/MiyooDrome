@@ -41,7 +41,7 @@ func (app *MiyooPod) downloadSong(t *Track) {
 		return
 	}
 	s := *t.NavSong
-	if t.Path != navcore.FilePath(c.MusicDir(MUSIC_ROOT), s.ID) {
+	if t.navDir() != c.MusicDir(MUSIC_ROOT) {
 		app.showError("This song belongs to a different connection")
 		return
 	}
@@ -49,20 +49,20 @@ func (app *MiyooPod) downloadSong(t *Track) {
 		report(s.Title)
 		ctx, cancel := context.WithTimeout(ctx, 2*time.Minute)
 		defer cancel()
-		if err := c.SaveSong(ctx, MUSIC_ROOT, s); err != nil {
+		if err := c.SaveSong(ctx, MUSIC_ROOT, SHARED_MUSIC_DIR, s); err != nil {
 			return navTaskResult{err: err}
 		}
 		id := trackPreview(t).id
 		artCtx, stop := context.WithTimeout(ctx, 8*time.Second)
 		defer stop()
 		_, _ = navcore.Cover(artCtx, c, c.MusicDir(MUSIC_ROOT), id)
-		return navTaskResult{message: "Saved to Downloaded songs"}
+		return navTaskResult{message: "Saved to Media/Music/MiyooDrome"}
 	})
 }
 func (app *MiyooPod) savedSongsMenu(root *MenuScreen) *MenuItem {
 	page := &MenuScreen{Title: "Downloaded songs", Parent: root, ReloadOnOpen: true}
 	page.Builder = func() []*MenuItem {
-		saved, err := navcore.DownloadedSongs(MUSIC_ROOT)
+		saved, err := navcore.DownloadedSongs(MUSIC_ROOT, SHARED_MUSIC_DIR)
 		if err != nil {
 			return app.navError(err.Error())
 		}

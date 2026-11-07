@@ -209,6 +209,10 @@ func main() {
 		logMsg("Could not remove an interrupted download: " + err.Error())
 	}
 
+	if err := navcore.MigrateDownloads(MUSIC_ROOT, SHARED_MUSIC_DIR); err != nil {
+		logMsg("Could not finish moving saved music: " + err.Error())
+	}
+
 	// Load library from JSON or perform full scan
 	err := app.loadLibraryJSON()
 	if err != nil {

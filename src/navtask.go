@@ -46,7 +46,7 @@ func (app *MiyooPod) beginNavTask(title string, work func(context.Context, func(
 
 func (app *MiyooPod) startAlbumDownload(c *navcore.Client, album navcore.Album, songs []navcore.Song) {
 	app.beginNavTask("Download album", func(ctx context.Context, report func(string)) navTaskResult {
-		err := c.DownloadAlbum(ctx, MUSIC_ROOT, album, songs, func(i int, title string) { report(fmt.Sprintf("%d / %d   %s", i+1, len(songs), title)) })
+		err := c.DownloadAlbum(ctx, MUSIC_ROOT, SHARED_MUSIC_DIR, album, songs, func(i int, title string) { report(fmt.Sprintf("%d / %d   %s", i+1, len(songs), title)) })
 		if ctx.Err() != nil {
 			err = ctx.Err()
 		}

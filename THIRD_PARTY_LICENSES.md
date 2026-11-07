@@ -1,6 +1,6 @@
 # Third-Party Licenses
 
-MiyooPod itself is licensed under the [MIT License](LICENSE). It bundles and
+MiyooDrome is derived from [MiyooPod](https://github.com/danfragoso/miyoopod), copyright © 2026 Danilo Fragoso, under the [MIT License](LICENSE). The original interface, controls and audio engine come from MiyooPod. The player bundles and
 depends on the following third-party components, each distributed under its own
 license. Copyright and license notices for these components are retained by
 their respective authors.

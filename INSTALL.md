@@ -17,7 +17,13 @@ The password is masked during entry. The player verifies the login before saving
 - Inside an album, **Play album** queues the tracks in disc and track order. Inside an artist, **Play all songs** and **Shuffle artist** queue that artist’s credited tracks from the albums returned by Navidrome.
 - **Download album** saves the complete album to the SD card. The progress screen shows the current track. **B** cancels. Start the download again to reuse completed tracks. Finished albums appear in **Downloaded albums** on the main menu and can be played without Wi-Fi or a library rescan.
 - Online albums and Now Playing request the artwork supplied by Navidrome. Opening an album or downloading it caches its available cover on the card.
-- On first playback, each track is downloaded before it starts. The player requests MP3 at 192 kbps by default, with a 64 MiB limit per track. Navidrome needs a working MP3 transcoder for formats such as FLAC. All downloads, settings and artwork are stored under `App/MiyooDrome/data/`. 
+- On first playback, each track is downloaded before it starts. The player requests MP3 at 192 kbps by default, with a 64 MiB limit per track. Navidrome needs a working MP3 transcoder for formats such as FLAC. Settings, artwork and temporary playback files live in `App/MiyooDrome/data/`.
+
+## Play downloads in MiyooPod or another player
+
+**Download song** and **Download album** save ordinary MP3 files in `Media/Music/MiyooDrome/` on the SD card. For example, a song may appear as `Media/Music/MiyooDrome/Artist - Title [9d1ab34a2c1e].mp3`. A short identifier keeps songs with the same artist and title distinct across libraries. MiyooPod scans `Media/Music/` recursively. Run its library scan after downloading. In other players, refresh the library or open the MP3 directly.
+
+On the first launch after upgrading from 0.3.0, MiyooDrome moves previously saved songs and albums into this folder using the download records on the card. Keep the existing app data when upgrading. Migration works offline and reuses the audio already on the card. Songs you only listened to stay in the playback cache. To free space used by permanent downloads, delete their MP3 files from `Media/Music/MiyooDrome/`.
 
 ## Manage SD card space
 

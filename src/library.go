@@ -54,47 +54,57 @@ func (app *MiyooPod) runLibraryScan(onComplete func()) {
 
 	fileCount := 0
 
-	filepath.Walk(MUSIC_ROOT, func(path string, info os.FileInfo, err error) error {
-		if err != nil || !app.Running {
-			return nil
-		}
-		if info.IsDir() {
-			if isSystemPath(info.Name()) {
-				return filepath.SkipDir
-			}
-			app.LibScanFolder = path
-			return nil
-		}
-
-		if isSystemPath(filepath.Base(path)) {
-			return nil
-		}
-
-		ext := strings.ToLower(filepath.Ext(path))
-		switch ext {
-		case ".mp3", ".flac", ".ogg":
-			if navcore.TemporaryTrack(MUSIC_ROOT, path) {
+	savedTracks, err := navcore.DownloadedSongs(MUSIC_ROOT, SHARED_MUSIC_DIR)
+	if err != nil {
+		logMsg("Could not read some download records: " + err.Error())
+	}
+	byPath := make(map[string]navcore.SavedSong, len(savedTracks))
+	for _, s := range savedTracks {
+		byPath[s.Path] = s
+	}
+	for _, root := range []string{MUSIC_ROOT, SHARED_MUSIC_DIR} {
+		filepath.Walk(root, func(path string, info os.FileInfo, err error) error {
+			if err != nil || !app.Running {
 				return nil
 			}
-			app.scanTrack(path)
-			fileCount++
-			app.LibScanCount = fileCount
-
-			if fileCount%5 == 0 {
-				app.LibScanStatus = fmt.Sprintf("Found %d songs...", fileCount)
-				app.requestRedraw()
+			if info.IsDir() {
+				if isSystemPath(info.Name()) {
+					return filepath.SkipDir
+				}
+				app.LibScanFolder = path
+				return nil
 			}
 
-		case ".m3u", ".m3u8":
-			app.Library.Playlists = append(app.Library.Playlists, &Playlist{
-				Name: strings.TrimSuffix(filepath.Base(path), ext),
-				Path: path,
-			})
-		}
+			if isSystemPath(filepath.Base(path)) {
+				return nil
+			}
 
-		return nil
-	})
+			ext := strings.ToLower(filepath.Ext(path))
+			switch ext {
+			case ".mp3", ".flac", ".ogg":
+				if !info.Mode().IsRegular() || info.Size() == 0 || navcore.TemporaryTrack(MUSIC_ROOT, path) {
+					return nil
+				}
+				app.scanTrack(path, byPath[path])
+				fileCount++
+				app.LibScanCount = fileCount
 
+				if fileCount%5 == 0 {
+					app.LibScanStatus = fmt.Sprintf("Found %d songs...", fileCount)
+					app.requestRedraw()
+				}
+
+			case ".m3u", ".m3u8":
+				app.Library.Playlists = append(app.Library.Playlists, &Playlist{
+					Name: strings.TrimSuffix(filepath.Base(path), ext),
+					Path: path,
+				})
+			}
+
+			return nil
+		})
+
+	}
 	// Sort phase
 	app.LibScanPhase = "sorting"
 	app.LibScanStatus = "Sorting library..."
@@ -160,7 +170,7 @@ func (app *MiyooPod) runLibraryScan(onComplete func()) {
 }
 
 // scanTrack reads metadata from a single audio file
-func (app *MiyooPod) scanTrack(path string) {
+func (app *MiyooPod) scanTrack(path string, record navcore.SavedSong) {
 	f, err := os.Open(path)
 	if err != nil {
 		return
@@ -195,8 +205,9 @@ func (app *MiyooPod) scanTrack(path string) {
 
 	// Duration and sample rate are lazy-filled on first play to speed up scanning
 
-	saved, coverPath, pinned := navcore.ReadSavedSong(MUSIC_ROOT, path)
+	saved, pinned := record.Song, record.Dir != ""
 	if pinned {
+		track.NavDir = record.Dir
 		track.NavSong = &saved
 		track.Offline = true
 		if saved.Title != "" {
@@ -246,6 +257,7 @@ func (app *MiyooPod) scanTrack(path string) {
 
 	// Extract art for album (first track with art wins)
 	if pinned && album.ArtPath == "" {
+		coverPath := record.CoverPath()
 		if _, err := os.Stat(coverPath); err == nil {
 			album.ArtPath = coverPath
 		}
