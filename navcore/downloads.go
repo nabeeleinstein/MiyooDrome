@@ -19,6 +19,7 @@ type downloadPin struct {
 	Filename   string `json:"filename,omitempty"`
 	Standalone bool   `json:"standalone,omitempty"`
 	Pending    bool   `json:"pending,omitempty"`
+	Deleting   bool   `json:"deleting,omitempty"`
 }
 
 func readPin(private, id string) (downloadPin, error) {
@@ -163,6 +164,12 @@ func (c *Client) saveSong(ctx context.Context, root, shared string, s Song, stan
 	if err != nil && !os.IsNotExist(err) {
 		return err
 	}
+	if p.Deleting {
+		if err := removeSongFiles(shared, private, p); err != nil {
+			return err
+		}
+		p = downloadPin{}
+	}
 	if standalone && !p.Standalone && p.Filename != "" && !p.Pending && hasAudio(filepath.Join(shared, p.Filename)) {
 		p.Standalone = true
 		return p.store(private)
@@ -222,6 +229,9 @@ func MigrateDownloads(root, shared string) error {
 	storageMu.Lock()
 	defer storageMu.Unlock()
 	return visitPins(root, func(private string, p downloadPin) error {
+		if p.Deleting {
+			return removeSongFiles(shared, private, p)
+		}
 		if p.Filename != "" && !p.Pending {
 			return nil
 		}

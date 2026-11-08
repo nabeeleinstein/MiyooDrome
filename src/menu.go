@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"image"
+	"os"
 	"sort"
 
 	"github.com/fogleman/gg"
@@ -10,7 +11,7 @@ import (
 
 func (app *MiyooPod) buildRootMenu() *MenuScreen {
 	root := &MenuScreen{Title: appName}
-	local := &MenuScreen{Title: "Downloaded library", Parent: root, ReloadOnOpen: true}
+	local := &MenuScreen{Title: "Downloaded library", DownloadRoot: true, Parent: root, ReloadOnOpen: true}
 	local.Builder = func() []*MenuItem { return app.downloadLibrary(local) }
 	settings := &MenuScreen{Title: "Settings", Parent: root}
 	settings.Builder = func() []*MenuItem { return app.buildSettingsMenuItems(settings) }
@@ -37,7 +38,13 @@ func (app *MiyooPod) buildPlaylistMenuItems(root *MenuScreen) []*MenuItem {
 			Title:  pl.Name,
 			Parent: root,
 			Builder: func() []*MenuItem {
-				return app.buildTrackMenuItems(playlist.Tracks)
+				var available []*Track
+				for _, t := range playlist.Tracks {
+					if _, err := os.Stat(t.Path); err == nil {
+						available = append(available, t)
+					}
+				}
+				return app.buildTrackMenuItems(available)
 			},
 		}
 		items = append(items, &MenuItem{
@@ -242,7 +249,11 @@ func (app *MiyooPod) handleMenuKey(key Key) {
 		}
 	case X:
 		if t := app.selectedNavSong(); t != nil {
-			app.downloadSong(t)
+			if t.Offline {
+				app.confirmDeleteSong(current, t)
+			} else {
+				app.downloadSong(t)
+			}
 		}
 	case Y:
 		// Add to queue: track, album, or all artist tracks

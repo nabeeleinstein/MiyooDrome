@@ -28,7 +28,7 @@ func (app *MiyooPod) downloadLibrary(home *MenuScreen) []*MenuItem {
 	if err != nil {
 		return []*MenuItem{{Label: "Cannot read downloaded songs", Action: func() { app.showError(err.Error()) }}}
 	}
-	complete, err := navcore.DownloadedAlbums(MUSIC_ROOT, SHARED_MUSIC_DIR)
+	savedAlbums, err := navcore.DownloadedAlbums(MUSIC_ROOT, SHARED_MUSIC_DIR)
 	if err != nil {
 		return []*MenuItem{{Label: "Cannot read downloaded albums", Action: func() { app.showError(err.Error()) }}}
 	}
@@ -57,8 +57,8 @@ func (app *MiyooPod) downloadLibrary(home *MenuScreen) []*MenuItem {
 		}
 		a.Tracks = append(a.Tracks, t)
 	}
-	for i := range complete {
-		a := &complete[i]
+	for i := range savedAlbums {
+		a := &savedAlbums[i]
 		albums[a.Dir+"\x00"+a.Album.ID] = &offlineAlbum{Album: Album{Name: a.Album.Name, Artist: a.Album.Artist}, saved: a, preview: navAlbumPreview(a.Dir, a.Album, true)}
 	}
 	for _, s := range saved {
@@ -148,24 +148,7 @@ func (app *MiyooPod) deleteAlbumItem(home, album *MenuScreen, saved *navcore.Sav
 					app.showError(err.Error())
 					return
 				}
-				for i, page := range app.MenuStack {
-					if page == home {
-						app.MenuStack = app.MenuStack[:i+1]
-						break
-					}
-				}
-				// Queue entries can stream again if their local copy was removed.
-				for _, t := range app.Queue.Tracks {
-					if t.Offline && t.NavSong != nil && t.navDir() == saved.Dir {
-						if _, err := os.Stat(navcore.PlayablePath(SHARED_MUSIC_DIR, saved.Dir, t.NavSong.ID)); os.IsNotExist(err) {
-							t.Offline = false
-						}
-					}
-				}
-				app.savePlaybackState()
-				home.Items = home.Builder()
-				home.SelIndex = 0
-				home.ScrollOff = 0
+				app.refreshAfterRemoval(home, saved.Dir)
 				app.notify("Removed album download")
 			}},
 		}
@@ -173,4 +156,50 @@ func (app *MiyooPod) deleteAlbumItem(home, album *MenuScreen, saved *navcore.Sav
 	item.Submenu.ReloadOnOpen = true
 	item.Submenu.Title = "Remove " + saved.Album.Name + "?"
 	return item
+}
+
+func (app *MiyooPod) refreshAfterRemoval(home *MenuScreen, dir string) {
+	for i, page := range app.MenuStack {
+		if page == home {
+			app.MenuStack = app.MenuStack[:i+1]
+			break
+		}
+	}
+	// Queue entries can stream again if their local copy was removed.
+	for _, t := range app.Queue.Tracks {
+		if t.Offline && t.NavSong != nil && t.navDir() == dir {
+			if _, err := os.Stat(navcore.PlayablePath(SHARED_MUSIC_DIR, dir, t.NavSong.ID)); os.IsNotExist(err) {
+				t.Offline = false
+			}
+		}
+	}
+	app.savePlaybackState()
+	home.Items = home.Builder()
+	home.SelIndex = 0
+	home.ScrollOff = 0
+	app.MenuBG = nil
+}
+
+func (app *MiyooPod) confirmDeleteSong(parent *MenuScreen, track *Track) {
+	for _, home := range app.MenuStack {
+		if !home.DownloadRoot {
+			continue
+		}
+		confirm := &MenuScreen{Title: "Remove " + track.Title + "?", Parent: parent, Built: true}
+		confirm.Items = []*MenuItem{
+			{Label: "Cancel", Action: func() { app.MenuStack = app.MenuStack[:len(app.MenuStack)-1] }},
+			{Label: "Delete song from device", Action: func() {
+				dir := track.navDir()
+				if err := navcore.DeleteSong(MUSIC_ROOT, SHARED_MUSIC_DIR, dir, track.NavSong.ID); err != nil {
+					app.showError(err.Error())
+					return
+				}
+				app.refreshAfterRemoval(home, dir)
+				app.notify("Removed song download")
+			}},
+		}
+		app.LastKey = NONE
+		app.MenuStack = append(app.MenuStack, confirm)
+		return
+	}
 }

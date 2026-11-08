@@ -579,6 +579,7 @@ type MenuScreen struct {
 	Builder      func() []*MenuItem
 	Built        bool
 	ReloadOnOpen bool
+	DownloadRoot bool
 }
 
 // --- Now Playing state ---

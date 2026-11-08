@@ -302,3 +302,77 @@ func TestRemoveAlbumKeepsOtherDownloadsAndResumes(t *testing.T) {
 		t.Fatal("changed import", err)
 	}
 }
+
+func TestDeleteOfflineSong(t *testing.T) {
+	root, shared := t.TempDir(), t.TempDir()
+	c, err := New(cfg("https://example.com"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	dir := c.MusicDir(root)
+	audio := bytes.Repeat([]byte("music"), 1024)
+	tracks := []Song{{ID: "one", Title: "First"}, {ID: "two", Title: "Second"}}
+	for _, s := range tracks {
+		if err := writeAtomic(FilePath(dir, s.ID), audio); err != nil {
+			t.Fatal(err)
+		}
+		if err := c.SaveSong(context.Background(), root, shared, s); err != nil {
+			t.Fatal(err)
+		}
+	}
+	data, err := json.Marshal(SavedAlbum{Album: Album{ID: "record"}, Songs: tracks})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := writeAtomic(albumPath(dir, "record"), data); err != nil {
+		t.Fatal(err)
+	}
+	manual := filepath.Join(shared, "First.mp3")
+	if err := os.WriteFile(manual, audio, 0600); err != nil {
+		t.Fatal(err)
+	}
+	if err := DeleteSong(root, shared, filepath.Dir(dir), "one"); err == nil {
+		t.Fatal("accepted wrong library")
+	}
+	path := PlayablePath(shared, dir, "one")
+	for range 2 {
+		if err := DeleteSong(root, shared, dir, "one"); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if _, err := os.Stat(path); !os.IsNotExist(err) {
+		t.Fatal("download still exists", err)
+	}
+	albums, err := DownloadedAlbums(root, shared)
+	if err != nil || len(albums) != 1 || len(albums[0].Songs) != 1 || albums[0].Songs[0].ID != "two" {
+		t.Fatal(albums, err)
+	}
+	private := FilePath(dir, "two")
+	pin, err := readPin(private, "two")
+	if err != nil {
+		t.Fatal(err)
+	}
+	pin.Deleting = true
+	if err := pin.store(private); err != nil {
+		t.Fatal(err)
+	}
+	if err := MigrateDownloads(root, shared); err != nil {
+		t.Fatal(err)
+	}
+	if saved, err := DownloadedSongs(root, shared); err != nil || len(saved) != 0 {
+		t.Fatal(saved, err)
+	}
+	if entries, err := os.ReadDir(shared); err != nil || len(entries) != 1 || entries[0].Name() != "First.mp3" {
+		t.Fatal(entries, err)
+	}
+	// A later explicit save can restore a removed song.
+	if err := writeAtomic(FilePath(dir, "one"), audio); err != nil {
+		t.Fatal(err)
+	}
+	if err := c.SaveSong(context.Background(), root, shared, tracks[0]); err != nil {
+		t.Fatal(err)
+	}
+	if !hasAudio(PlayablePath(shared, dir, "one")) {
+		t.Fatal("missing restored song")
+	}
+}

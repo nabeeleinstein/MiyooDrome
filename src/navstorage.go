@@ -29,7 +29,7 @@ func (app *MiyooPod) selectedNavSong() *Track {
 		return nil
 	}
 	t := m.Items[m.SelIndex].Track
-	if t != nil && t.NavSong != nil && !t.Offline {
+	if t != nil && t.NavSong != nil {
 		return t
 	}
 	return nil

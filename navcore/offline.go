@@ -182,16 +182,17 @@ func DownloadedAlbums(root, shared string) ([]SavedAlbum, error) {
 			continue
 		}
 		a.Dir = filepath.Dir(filepath.Dir(p))
-		complete := true
+		available := a.Songs[:0]
 		for _, s := range a.Songs {
 			private := FilePath(a.Dir, s.ID)
 			path := PlayablePath(shared, a.Dir, s.ID)
 			if path == private && (TemporaryTrack(root, private) || !hasAudio(path)) {
-				complete = false
-				break
+				continue
 			}
+			available = append(available, s)
 		}
-		if complete {
+		a.Songs = available
+		if len(a.Songs) > 0 {
 			albums = append(albums, a)
 		}
 	}

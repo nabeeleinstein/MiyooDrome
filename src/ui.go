@@ -595,10 +595,14 @@ func (app *MiyooPod) drawStatusBar() {
 	// Left side: context-sensitive button legend
 	switch app.CurrentScreen {
 	case ScreenMenu:
-		if app.selectedNavSong() != nil {
+		if t := app.selectedNavSong(); t != nil {
 			app.drawButtonLegend(12, centerY, "A", "Play")
 			app.drawButtonLegend(118, centerY, "B", "Back")
-			app.drawButtonLegend(232, centerY, "X", "Download song")
+			action := "Download song"
+			if t.Offline {
+				action = "Delete song"
+			}
+			app.drawButtonLegend(232, centerY, "X", action)
 			app.drawButtonLegend(450, centerY, "Y", "Add to queue")
 		} else {
 			app.drawButtonLegend(12, centerY, "A", "Select")

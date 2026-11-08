@@ -101,24 +101,7 @@ func finishAlbumRemoval(shared, journal string) error {
 		if pin.Standalone {
 			continue
 		}
-		if pin.Filename != "" {
-			key := sha256.Sum256([]byte(filepath.Base(a.Dir) + "\x00" + song.ID))
-			suffix := fmt.Sprintf(" [%x]", key[:6])
-			stem := strings.TrimSuffix(pin.Filename, ".mp3")
-			if pos := strings.LastIndex(stem, " ("); pos >= 0 && strings.HasSuffix(stem, ")") {
-				stem = stem[:pos]
-			}
-			if !strings.HasSuffix(stem, suffix) {
-				return errors.New("download filename does not match its record")
-			}
-			if err := removeIfPresent(filepath.Join(shared, pin.Filename)); err != nil {
-				return err
-			}
-		}
-		if err := removeIfPresent(private); err != nil {
-			return err
-		}
-		if err := removeIfPresent(pinPath(private)); err != nil {
+		if err := removeSongFiles(shared, private, pin); err != nil {
 			return err
 		}
 	}
@@ -143,4 +126,50 @@ func ResumeAlbumRemovals(root, shared string) error {
 		}
 	}
 	return nil
+}
+
+// DeleteSong removes the requested local download even when it came from an album.
+// The album browser filters missing tracks while retaining the album removal action.
+func DeleteSong(root, shared, dir, id string) error {
+	albumMu.Lock()
+	defer albumMu.Unlock()
+	storageMu.Lock()
+	defer storageMu.Unlock()
+	if id == "" || filepath.Dir(dir) != filepath.Clean(root) || !hexName(filepath.Base(dir), 64) {
+		return errors.New("invalid download folder")
+	}
+	private := FilePath(dir, id)
+	pin, err := readPin(private, id)
+	if os.IsNotExist(err) {
+		return nil
+	}
+	if err != nil {
+		return err
+	}
+	pin.Deleting = true
+	if err := pin.store(private); err != nil {
+		return err
+	}
+	return removeSongFiles(shared, private, pin)
+}
+
+func removeSongFiles(shared, private string, pin downloadPin) error {
+	if pin.Filename != "" {
+		key := sha256.Sum256([]byte(filepath.Base(filepath.Dir(private)) + "\x00" + pin.ID))
+		suffix := fmt.Sprintf(" [%x]", key[:6])
+		stem := strings.TrimSuffix(pin.Filename, ".mp3")
+		if pos := strings.LastIndex(stem, " ("); pos >= 0 && strings.HasSuffix(stem, ")") {
+			stem = stem[:pos]
+		}
+		if !strings.HasSuffix(stem, suffix) {
+			return errors.New("download filename does not match its record")
+		}
+		if err := removeIfPresent(filepath.Join(shared, pin.Filename)); err != nil {
+			return err
+		}
+	}
+	if err := removeIfPresent(private); err != nil {
+		return err
+	}
+	return removeIfPresent(pinPath(private))
 }
