@@ -3,7 +3,6 @@ package main
 import (
 	"image"
 	"sync"
-	"sync/atomic"
 	"time"
 
 	"github.com/fogleman/gg"
@@ -603,23 +602,19 @@ type CoverflowState struct {
 // --- Main application ---
 
 type MiyooPod struct {
-	heldMenuKey     Key
-	CacheLimitMiB   int
-	displayMu       sync.Mutex
-	keyboardActive  atomic.Bool
-	keyboardSession *onionKeyboardSession
-	navQuery        string
-	searchScope     string
-	searchRelease   Key
-	playerReturn    ScreenType
-	notice          string
-	noticeUntil     time.Time
-	navKeyboard     textKeyboard
-	navArtwork      navArtworkState
-	navTask         *navTask
-	Running         bool
-	ShouldRefresh   bool
-	RefreshChan     chan struct{} // Signal channel for screen refresh
+	heldMenuKey   Key
+	CacheLimitMiB int
+	navQuery      string
+	searchScope   string
+	playerReturn  ScreenType
+	notice        string
+	noticeUntil   time.Time
+	navKeyboard   textKeyboard
+	navArtwork    navArtworkState
+	navTask       *navTask
+	Running       bool
+	ShouldRefresh bool
+	RefreshChan   chan struct{} // Signal channel for screen refresh
 
 	// Display
 	DC *gg.Context

@@ -5,24 +5,19 @@ import (
 	"strings"
 	"unicode/utf8"
 
-	"github.com/nabeeleinstein/MiyooDrome/internal/onionkeyboard"
 	"github.com/nabeeleinstein/MiyooDrome/navcore"
 )
 
 func (app *MiyooPod) openNavSearch() {
-	app.beginSearch("all", A)
+	app.beginSearch("all")
 }
 func (app *MiyooPod) searchButton(label, scope string) *MenuItem {
-	return &MenuItem{Label: label, Action: func() { app.beginSearch(scope, A) }}
+	return &MenuItem{Label: label, Action: func() { app.beginSearch(scope) }}
 }
-func (app *MiyooPod) beginSearch(scope string, release Key) {
+func (app *MiyooPod) beginSearch(scope string) {
 	app.searchScope = scope
 	app.navQuery = ""
-	app.searchRelease = NONE
-	if tryOnionKeyboard && onionkeyboard.Available(onionSystemDir) {
-		app.searchRelease = release
-	}
-	app.navKeyboard = textKeyboard{qwerty: true}
+	app.navKeyboard = textKeyboard{}
 	app.LastKey = NONE
 	app.setScreen(ScreenNavSearch)
 }
@@ -34,11 +29,6 @@ func (app *MiyooPod) drawNavSearch() {
 	dc.SetHexColor(app.CurrentTheme.ItemTxt)
 	dc.SetFontFace(app.FontHeader)
 	dc.DrawStringAnchored("Enter a name or title", 24, 70, 0, 0.5)
-	if app.searchRelease != NONE {
-		dc.SetFontFace(app.FontMenu)
-		dc.DrawStringAnchored("Opening Onion keyboard…", 320, 220, .5, .5)
-		return
-	}
 	app.drawTextKeyboard(&app.navKeyboard, app.navQuery, "", "Search")
 }
 func (app *MiyooPod) handleNavSearchKey(key Key) {

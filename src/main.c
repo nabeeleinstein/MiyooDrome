@@ -152,20 +152,6 @@ static void destroy_player_window(void) {
     window = NULL;
 }
 
-void suspend_player_video(void) {
-    destroy_player_window();
-    SDL_QuitSubSystem(SDL_INIT_VIDEO);
-}
-
-int resume_player_video(void) {
-    if (SDL_InitSubSystem(SDL_INIT_VIDEO) < 0 || create_player_window() < 0) {
-        return -1;
-    }
-    SDL_PumpEvents();
-    SDL_FlushEvents(SDL_KEYDOWN, SDL_KEYUP);
-    return 0;
-}
-
 void quit() {
     destroy_player_window();
     SDL_Quit();

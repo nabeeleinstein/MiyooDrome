@@ -4,19 +4,17 @@ import "unicode/utf8"
 
 type textKeyboard struct {
 	page, row, col int
-	qwerty         bool
+}
+
+// The three pages cover printable ASCII, including spaces and URL punctuation.
+var keyboardPages = [][4]string{
+	{"1234567890", "qwertyuiop", "asdfghjkl ", "zxcvbnm./:"},
+	{"1234567890", "QWERTYUIOP", "ASDFGHJKL ", "ZXCVBNM./:"},
+	{"!@#$%^&*()", "-_=+[]{}<>", ".,:;/?\\|\"", "~`' "},
 }
 
 func (f *textKeyboard) rows() [4]string {
-	if f.qwerty {
-		switch f.page {
-		case 0:
-			return [4]string{"1234567890", "qwertyuiop", "asdfghjkl ", "zxcvbnm./:"}
-		case 1:
-			return [4]string{"1234567890", "QWERTYUIOP", "ASDFGHJKL ", "ZXCVBNM./:"}
-		}
-	}
-	return loginKeys[f.page]
+	return keyboardPages[f.page]
 }
 
 func (f *textKeyboard) move(key Key) bool {
@@ -37,7 +35,7 @@ func (f *textKeyboard) move(key Key) bool {
 		}
 		f.col = (f.col + width + step) % width
 	case Y:
-		f.page = (f.page + 1) % len(loginKeys)
+		f.page = (f.page + 1) % len(keyboardPages)
 		f.col = min(f.col, len(f.rows()[f.row])-1)
 	default:
 		return false

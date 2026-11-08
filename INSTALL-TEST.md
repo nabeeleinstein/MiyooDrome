@@ -4,18 +4,18 @@
 2. For the first install, sign in under **Navidrome → Sign in**. To reuse a working login, you can instead copy just `App/MiyooDrome/data/config.json` into `App/MiyooDromeTest/data/`. Create the test data folder if needed. If your server uses a private CA, copy `ca.pem` alongside it. Keep these files on your own card.
 3. To try another build, merge the newer `MiyooDromeTest` folder over the existing test folder and keep its `data/`. Builds from GitHub show their short commit identifier under **About**.
 
-## Try the sign-in keyboard
+## Sign in on the handheld
 
-Open **Navidrome → Sign in**. On the server and username screens, press **A** to edit with Onion’s keyboard. **START** accepts the text; cancelling the keyboard returns to the field with its previous value. On an already-filled field, **START** skips editing. **L** switches HTTP/HTTPS on the server screen.
+Search and sign-in use the player’s built-in QWERTY keyboard. Move with the D-pad, press **A** to type, **X** to delete, and **Y** to switch case or symbols. **START** accepts the field or submits the search. **B** goes back and **MENU** cancels.
 
-The password uses MiyooDrome’s masked QWERTY keyboard. **A** types, **X** deletes, **Y** switches case or symbols, and **START** signs in. If Onion’s keyboard is unavailable, the same built-in layout handles all three fields. You can also select it with **X** before opening Onion’s keyboard.
+Under **Navidrome → Sign in**, **L** switches HTTP/HTTPS on the server field. An existing address and username are prefilled. Password entry is masked.
 
 ## Browse and resume
 
-- Open **Search** for the full server or use **Search artists** and **Search albums** within those lists. Confirm the Onion keyboard to see results. If the system keyboard is unavailable, press **START** on the built-in keyboard.
+- Open **Search** for the full server or use **Search artists** and **Search albums** within those lists. Press **START** to see the results.
 - Hold **Down** or **Up** for about three quarters of a second on a long alphabetical list to jump between initials. Tap for a single row.
 - Press **L2** while browsing to pause or resume the current song without leaving the list. On **Now Playing**, **A** also toggles playback. **Up** opens track details and controls. **B** returns to the song. Sign-in and search keep their own keyboard controls.
-- Press **Y** on a song for queue feedback. **R2** opens **Now Playing** from an unlocked app screen, including About and download progress. **B** returns. Finish or cancel Onion’s keyboard before pressing **R2**.
+- Press **Y** on a song for queue feedback. **R2** opens **Now Playing** from an unlocked app screen, including About and download progress. **B** returns.
 - Open **Downloaded library** for songs, artists and albums. To remove a complete album, open it and choose **Delete downloaded album**. Cancel is selected first. Tracks explicitly saved individually in this build stay available, as do tracks used by another saved album. To keep an individual song from an older album download, save the song with **X** before removing the album.
 - After copying your own music or playlists onto the card, choose **Settings → Rescan imported music**. Navidrome downloads and their artwork appear automatically when available.
 

@@ -4,7 +4,6 @@ import (
 	"strings"
 	"unicode/utf8"
 
-	"github.com/nabeeleinstein/MiyooDrome/internal/onionkeyboard"
 	"github.com/nabeeleinstein/MiyooDrome/navcore"
 )
 
@@ -15,29 +14,16 @@ const (
 	loginDone
 )
 
-// The three pages cover all printable ASCII, including space.
-var loginKeys = [][4]string{
-	{"1234567890", "abcdefghij", "klmnopqrst", "uvwxyz./: "},
-	{"1234567890", "ABCDEFGHIJ", "KLMNOPQRST", "UVWXYZ./: "},
-	{"!@#$%^&*()", "-_=+[]{}<>", ".,:;/?\\|\"'", "~` "},
-}
-
 type signInForm struct {
 	server, user, message string
 	password              []byte
 	field                 int
 	textKeyboard
-	bitrate               int
-	native, editOnRelease bool
-}
-
-func (f *signInForm) usesOnionKeyboard() bool {
-	return f.native && (f.field == loginServer || f.field == loginUser)
+	bitrate int
 }
 
 func (app *MiyooPod) openSignIn() {
-	f := signInForm{server: "https://", bitrate: 192, native: tryOnionKeyboard && onionkeyboard.Available(onionSystemDir)}
-	f.qwerty = tryOnionKeyboard
+	f := signInForm{server: "https://", bitrate: 192}
 	if cfg, err := navcore.ReadConfig(navConfigPath); err == nil {
 		f.server, f.user, f.bitrate = cfg.Server, cfg.Username, cfg.MaxBitrate
 	}
@@ -89,21 +75,6 @@ func (app *MiyooPod) handleSignInKey(key Key) {
 			app.closeSignIn()
 		}
 		return
-	}
-	if f.usesOnionKeyboard() {
-		switch key {
-		case A:
-			f.editOnRelease = true
-			return
-		case X:
-			f.native = false
-			f.message = ""
-			return
-		case START, MENU, B, L:
-			f.editOnRelease = false
-		default:
-			return
-		}
 	}
 	if f.move(key) {
 		return
@@ -198,18 +169,6 @@ func (app *MiyooPod) drawSignIn() {
 	next := "Next"
 	if f.field == loginPassword {
 		next = "Sign in"
-	}
-	if f.usesOnionKeyboard() {
-		app.drawKeyboardValue(value)
-		dc.SetHexColor(theme.ItemTxt)
-		dc.SetFontFace(app.FontSmall)
-		dc.DrawStringAnchored(hint, 320, 170, 0.5, 0.5)
-		dc.DrawStringAnchored("Press A to edit with the Onion keyboard", 320, 235, 0.5, 0.5)
-		app.drawButtonLegend(24, 384, "X", "Use built-in keys")
-		app.drawButtonLegend(330, 384, "START", "Keep and continue")
-		app.drawButtonLegend(24, 438, "B", "Back")
-		app.drawButtonLegend(330, 438, "MENU", "Cancel")
-		return
 	}
 	app.drawTextKeyboard(&f.textKeyboard, value, hint, next)
 }

@@ -15,8 +15,6 @@ void c_logd(const char *fmt, int val);
 int pollEvents(void);
 int refreshScreenPtr(unsigned char *pixels);
 int init(void);
-void suspend_player_video(void);
-int resume_player_video(void);
 void quit(void);
 int audio_init(void);
 int audio_load(const char *path);
