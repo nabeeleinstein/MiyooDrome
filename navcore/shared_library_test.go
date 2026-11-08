@@ -101,3 +101,62 @@ func TestSharedDownloadMigration(t *testing.T) {
 		t.Fatal("standalone protection / deleted album resurrected", saved, err)
 	}
 }
+
+func TestTwoEditionCachePaths(t *testing.T) {
+	root, testCache, public := t.TempDir(), t.TempDir(), t.TempDir()
+	c, err := New(cfg("https://example.org"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	c.PlaybackCacheRoot = testCache
+	s := Song{ID: "same-id", Artist: "Same artist", Title: "Same title"}
+	dir := c.MusicDir(root)
+	stableStream := FilePath(dir, s.ID)
+	testStream := FilePath(c.MusicDir(testCache), s.ID)
+	stableBytes, testBytes := bytes.Repeat([]byte{1}, 2048), bytes.Repeat([]byte{2}, 2048)
+	for path, data := range map[string][]byte{stableStream: stableBytes, testStream: testBytes} {
+		if err := writeAtomic(path, data); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := c.SaveSong(context.Background(), root, public, s); err != nil {
+		t.Fatal(err)
+	}
+	assertBytes := func(path string, want []byte) {
+		t.Helper()
+		got, err := os.ReadFile(path)
+		if err != nil || !bytes.Equal(got, want) {
+			t.Fatal("unexpected file contents", path, err)
+		}
+	}
+	saved := PlayablePath(public, dir, s.ID)
+	assertBytes(saved, testBytes)
+	assertBytes(stableStream, stableBytes)
+	other := c.Config
+	other.Username = "another-user"
+	c2, err := New(other)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := writeAtomic(FilePath(c2.MusicDir(root), s.ID), stableBytes); err != nil {
+		t.Fatal(err)
+	}
+	if err := c2.SaveSong(context.Background(), root, public, s); err != nil {
+		t.Fatal(err)
+	}
+	otherSaved := PlayablePath(public, c2.MusicDir(root), s.ID)
+	if otherSaved == saved {
+		t.Fatal("two accounts share an MP3")
+	}
+	if _, err := TrimCache(testCache, 0, ""); err != nil {
+		t.Fatal(err)
+	}
+	if err := DeleteSong(root, public, dir, s.ID); err != nil {
+		t.Fatal(err)
+	}
+	assertBytes(stableStream, stableBytes)
+	assertBytes(otherSaved, stableBytes)
+	if !TemporaryTrack(root, stableStream) {
+		t.Fatal("stable stream should remain a temporary file")
+	}
+}

@@ -78,7 +78,7 @@ func (app *MiyooPod) drawNavCover(p navPreview, x, y, size int) {
 func loadNavCover(ctx context.Context, p navPreview) (image.Image, error) {
 	audioPath := ""
 	if p.songID != "" {
-		audioPath = navcore.PlayablePath(SHARED_MUSIC_DIR, p.dir, p.songID)
+		audioPath = playbackPath(p.dir, p.songID)
 	}
 	img, err := navcore.ResolveCover(ctx, nil, p.dir, p.id, audioPath, p.albumID, p.songID)
 	if img != nil {

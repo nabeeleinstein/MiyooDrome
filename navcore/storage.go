@@ -46,7 +46,7 @@ func TemporaryTrack(root, path string) bool {
 		return false
 	}
 	p, err := readPin(path, "")
-	return os.IsNotExist(err) || (err == nil && p.Filename != "" && !p.Pending)
+	return os.IsNotExist(err) || (err == nil && (p.Staged || (p.Filename != "" && !p.Pending)))
 }
 
 type cacheFile struct {

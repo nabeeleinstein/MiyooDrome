@@ -68,7 +68,7 @@ func (app *MiyooPod) runLibraryScan(onComplete func()) {
 				return nil
 			}
 			if info.IsDir() {
-				if isSystemPath(info.Name()) {
+				if isSystemPath(info.Name()) || (root == playbackCacheRoot && info.Name() == "saved") {
 					return filepath.SkipDir
 				}
 				app.LibScanFolder = path

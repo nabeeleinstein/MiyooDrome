@@ -177,8 +177,11 @@ func removeSongFiles(shared, private string, pin downloadPin) error {
 			return err
 		}
 	}
-	if err := removeIfPresent(private); err != nil {
-		return err
+	// Once published, an audio file in the streaming cache is independent.
+	if pin.Filename == "" || pin.Pending || pin.Staged {
+		if err := removeIfPresent(pin.sourcePath(private)); err != nil {
+			return err
+		}
 	}
 	return removeIfPresent(pinPath(private))
 }

@@ -172,7 +172,8 @@ func (app *MiyooPod) refreshAfterRemoval(home *MenuScreen, dir string) {
 	// Queue entries can stream again if their local copy was removed.
 	for _, t := range app.Queue.Tracks {
 		if t.Offline && t.NavSong != nil && t.navDir() == dir {
-			if _, err := os.Stat(navcore.PlayablePath(SHARED_MUSIC_DIR, dir, t.NavSong.ID)); os.IsNotExist(err) {
+			path := navcore.PlayablePath(SHARED_MUSIC_DIR, dir, t.NavSong.ID)
+			if _, err := os.Stat(path); os.IsNotExist(err) || navcore.TemporaryTrack(MUSIC_ROOT, path) {
 				t.Offline = false
 			}
 		}

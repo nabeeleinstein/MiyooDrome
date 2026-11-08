@@ -18,6 +18,7 @@ type downloadPin struct {
 	Song
 	Filename   string `json:"filename,omitempty"`
 	Standalone bool   `json:"standalone,omitempty"`
+	Staged     bool   `json:"staged,omitempty"`
 	Pending    bool   `json:"pending,omitempty"`
 	Deleting   bool   `json:"deleting,omitempty"`
 }
@@ -119,15 +120,25 @@ func reserveMP3(shared, private string, s Song) (string, error) {
 	}
 }
 
+// Test-edition saves stage under the shared record directory so they never
+// consume a stable-edition stream with the same account and song ID.
+func (p downloadPin) sourcePath(private string) string {
+	if p.Staged {
+		return filepath.Join(filepath.Dir(pinPath(private)), filepath.Base(private))
+	}
+	return private
+}
+
 func publish(private, shared string, p downloadPin) error {
 	if p.Filename != "" && hasAudio(filepath.Join(shared, p.Filename)) {
 		if !p.Pending {
 			return nil
 		}
-		p.Pending = false
+		p.Pending, p.Staged = false, false
 		return p.store(private)
 	}
-	if !hasAudio(private) {
+	source := p.sourcePath(private)
+	if !hasAudio(source) {
 		return os.ErrNotExist
 	}
 	// After a power loss, continue a journaled move into its original reservation.
@@ -145,10 +156,10 @@ func publish(private, shared string, p downloadPin) error {
 			return err
 		}
 	}
-	if err = os.Rename(private, dest); err != nil {
+	if err = os.Rename(source, dest); err != nil {
 		return fmt.Errorf("moving download into Media/Music: %w", err)
 	}
-	p.Pending = false
+	p.Pending, p.Staged = false, false
 	return p.store(private)
 }
 
@@ -177,19 +188,27 @@ func (c *Client) saveSong(ctx context.Context, root, shared string, s Song, stan
 	p.Standalone = p.Standalone || standalone
 	p.Song = s
 	if p.Filename == "" || !hasAudio(filepath.Join(shared, p.Filename)) {
-		if c.PlaybackCacheRoot != "" && c.PlaybackCacheRoot != root && !hasAudio(private) {
-			cached := FilePath(c.MusicDir(c.PlaybackCacheRoot), s.ID)
-			if hasAudio(cached) {
-				if err := os.MkdirAll(filepath.Dir(private), 0700); err != nil {
+		if c.PlaybackCacheRoot != "" && c.PlaybackCacheRoot != root {
+			p.Staged = true
+		}
+		source := p.sourcePath(private)
+		if !hasAudio(source) {
+			cacheRoot := c.PlaybackCacheRoot
+			if cacheRoot == "" {
+				cacheRoot = root
+			}
+			cached, err := c.CacheSong(ctx, s, c.MusicDir(cacheRoot))
+			if err != nil {
+				return err
+			}
+			if cached != source {
+				if err := p.store(private); err != nil {
 					return err
 				}
-				if err := os.Rename(cached, private); err != nil {
+				if err := os.Rename(cached, source); err != nil {
 					return err
 				}
 			}
-		}
-		if _, err = c.CacheSong(ctx, s, c.MusicDir(root)); err != nil {
-			return err
 		}
 	}
 	return publish(private, shared, p)
@@ -246,7 +265,7 @@ func MigrateDownloads(root, shared string) error {
 		if p.Filename != "" && !p.Pending {
 			return nil
 		}
-		if !p.Pending && !hasAudio(private) {
+		if !p.Pending && !hasAudio(p.sourcePath(private)) {
 			return nil
 		}
 		return publish(private, shared, p)
@@ -256,7 +275,7 @@ func MigrateDownloads(root, shared string) error {
 func DownloadedSongs(root, shared string) ([]SavedSong, error) {
 	var out []SavedSong
 	err := visitPins(root, func(private string, p downloadPin) error {
-		path := private
+		path := p.sourcePath(private)
 		if p.Filename != "" {
 			public := filepath.Join(shared, p.Filename)
 			if hasAudio(public) {
