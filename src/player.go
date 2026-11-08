@@ -315,10 +315,11 @@ func (app *MiyooPod) updateCoverflowForCurrentTrack() {
 
 	track := app.Playing.Track
 
-	if len(app.Coverflow.Albums) == 0 && app.Library != nil {
+	if app.Library != nil {
 		app.Coverflow.Albums = app.Library.Albums
 	}
 
+	app.Coverflow.CenterIndex = -1
 	for i, album := range app.Coverflow.Albums {
 		if album.Name == track.Album && album.Artist == track.Artist {
 			app.Coverflow.CenterIndex = i

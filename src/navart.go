@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"image"
+	"path/filepath"
 	"time"
 
 	"github.com/nabeeleinstein/MiyooDrome/navcore"
@@ -61,14 +62,7 @@ func (app *MiyooPod) drawNavCover(p navPreview, x, y, size int) {
 		go func() {
 			ctx, cancel := context.WithTimeout(context.Background(), 8*time.Second)
 			defer cancel()
-			var c *navcore.Client
-			if !p.offline {
-				if current, err := navClient(); err == nil && current.MusicDir(MUSIC_ROOT) == p.dir {
-					c = current
-					defer c.HTTP.CloseIdleConnections()
-				}
-			}
-			img, err := navcore.Cover(ctx, c, p.dir, p.id)
+			img, err := loadNavCover(ctx, p)
 			result := navArtImage{key: key}
 			if err == nil {
 				result.large = scaledCover(img, COVER_CENTER_SIZE)
@@ -80,6 +74,27 @@ func (app *MiyooPod) drawNavCover(p navPreview, x, y, size int) {
 		}()
 	}
 	app.drawNavPlaceholder(x, y, size)
+}
+
+// Prefer the local image. Both editions use the same server/account directory
+// key. A read-only lookup can reuse stable art without sharing credentials.
+func loadNavCover(ctx context.Context, p navPreview) (image.Image, error) {
+	img, err := navcore.Cover(ctx, nil, p.dir, p.id)
+	if err == nil {
+		return img, nil
+	}
+	if MUSIC_ROOT != stableMusicRoot && filepath.Dir(p.dir) == MUSIC_ROOT {
+		stableDir := filepath.Join(stableMusicRoot, filepath.Base(p.dir))
+		if img, err := navcore.Cover(ctx, nil, stableDir, p.id); err == nil {
+			return img, nil
+		}
+	}
+	c, configErr := navClient()
+	if configErr != nil || c.MusicDir(MUSIC_ROOT) != p.dir {
+		return nil, err
+	}
+	defer c.HTTP.CloseIdleConnections()
+	return navcore.Cover(ctx, c, p.dir, p.id)
 }
 
 func (app *MiyooPod) drawNavPlaceholder(x, y, size int) {

@@ -607,7 +607,7 @@ func (app *MiyooPod) drawStatusBar() {
 		} else {
 			app.drawButtonLegend(12, centerY, "A", "Select")
 			app.drawButtonLegend(132, centerY, "B", "Back")
-			app.drawButtonLegend(253, centerY, "R2", "Now Playing")
+			app.drawButtonLegend(253, centerY, "START", "Now Playing")
 			if app.isSearchableMenu() {
 				app.drawButtonLegend(493, centerY, "SEL", "Search")
 			} else if app.Playing != nil && app.Playing.Track != nil {

@@ -62,6 +62,19 @@ func (app *MiyooPod) runLibraryScan(onComplete func()) {
 	for _, s := range savedTracks {
 		byPath[s.Path] = s
 	}
+	// The stable edition stores cover images beside its download records, outside
+	// Media/Music. Read those records only for their published files and metadata.
+	if MUSIC_ROOT != stableMusicRoot {
+		imported, err := navcore.DownloadedSongs(stableMusicRoot, stableDownloadsDir)
+		if err != nil {
+			logMsg("Could not read some stable artwork records: " + err.Error())
+		}
+		for _, song := range imported {
+			if filepath.Dir(song.Path) == stableDownloadsDir {
+				byPath[song.Path] = song
+			}
+		}
+	}
 	// Browse the whole public library. Only this edition’s download records confer ownership.
 	for _, root := range []string{MUSIC_ROOT, CARD_MUSIC_DIR} {
 		filepath.Walk(root, func(path string, info os.FileInfo, err error) error {
@@ -206,11 +219,13 @@ func (app *MiyooPod) scanTrack(path string, record navcore.SavedSong) {
 
 	// Duration and sample rate are lazy-filled on first play to speed up scanning
 
-	saved, pinned := record.Song, record.Dir != ""
-	if pinned {
-		track.NavDir = record.Dir
-		track.NavSong = &saved
-		track.Offline = true
+	saved := record.Song
+	if record.Dir != "" {
+		if filepath.Dir(record.Dir) == MUSIC_ROOT {
+			track.NavDir = record.Dir
+			track.NavSong = &saved
+			track.Offline = true
+		}
 		if saved.Title != "" {
 			track.Title = saved.Title
 		}
@@ -257,10 +272,11 @@ func (app *MiyooPod) scanTrack(path string, record navcore.SavedSong) {
 	album.Tracks = append(album.Tracks, track)
 
 	// Extract art for album (first track with art wins)
-	if pinned && album.ArtPath == "" {
+	if record.Dir != "" && album.ArtPath == "" {
 		coverPath := record.CoverPath()
 		if _, err := os.Stat(coverPath); err == nil {
 			album.ArtPath = coverPath
+			track.HasArt = true
 		}
 	}
 	if track.HasArt && album.ArtData == nil && album.ArtPath == "" && picData != nil {
@@ -648,6 +664,8 @@ func (app *MiyooPod) handleLibraryScanKey(key Key) {
 	case B, MENU:
 		if app.LibScanDone {
 			app.LibScanDone = false
+			app.updateCoverflowForCurrentTrack()
+			app.NPCacheDirty = true
 			app.setScreen(ScreenMenu)
 			app.drawCurrentScreen()
 		}
