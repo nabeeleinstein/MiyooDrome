@@ -27,7 +27,7 @@ func drawLogo(dc *gg.Context, x, y, scale float64, accent string) {
 	dc.SetHexColor(ink)
 	dc.Fill()
 	dc.DrawRoundedRectangle(11.5, 3.5, 41, 56.5, 4.8)
-	dc.SetHexColor("#e3dfcd")
+	dc.SetHexColor(accent)
 	dc.Fill()
 
 	dc.DrawRoundedRectangle(13, 6, 38, 30, 3)
@@ -75,6 +75,9 @@ func drawLogo(dc *gg.Context, x, y, scale float64, accent string) {
 	dc.SetHexColor("#797579")
 	dc.DrawRoundedRectangle(25, 54, 5.1, 1.9, .9)
 	dc.DrawRoundedRectangle(33, 54, 5.1, 1.9, .9)
+	dc.Fill()
+	dc.DrawCircle(48, 4.8, 1.45)
+	dc.SetHexColor(ink)
 	dc.Fill()
 	dc.DrawCircle(48, 4.8, .85)
 	dc.SetHexColor(accent)
