@@ -21,9 +21,7 @@ func (app *MiyooPod) buildRootMenu() *MenuScreen {
 		app.navRootItem(root),
 		{Label: "Search", Action: app.openNavSearch},
 		{Label: local.Title, HasSubmenu: true, Submenu: local},
-		app.storageMenu(root),
 		{Label: settings.Title, HasSubmenu: true, Submenu: settings},
-		{Label: "About", Action: func() { app.setScreen(ScreenAbout) }},
 		{Label: "Exit", Action: func() { app.Running = false }},
 	}
 	root.Built = true
@@ -130,7 +128,7 @@ func (app *MiyooPod) buildSettingsMenuItems(root *MenuScreen) []*MenuItem {
 		},
 	})
 
-	items = append(items, &MenuItem{Label: "Rescan imported music", Action: func() { app.startLibraryScan(nil) }})
+	items = append(items, app.storageMenu(root), &MenuItem{Label: "Rescan imported music", Action: func() { app.startLibraryScan(nil) }})
 
 	// Clear App Data
 	items = append(items, &MenuItem{
@@ -140,6 +138,7 @@ func (app *MiyooPod) buildSettingsMenuItems(root *MenuScreen) []*MenuItem {
 		},
 	})
 
+	items = append(items, &MenuItem{Label: "About", Action: func() { app.setScreen(ScreenAbout) }})
 	return items
 }
 
