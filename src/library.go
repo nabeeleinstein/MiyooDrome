@@ -62,21 +62,7 @@ func (app *MiyooPod) runLibraryScan(onComplete func()) {
 	for _, s := range savedTracks {
 		byPath[s.Path] = s
 	}
-	// The stable edition stores cover images beside its download records, outside
-	// Media/Music. Read those records only for their published files and metadata.
-	if MUSIC_ROOT != stableMusicRoot {
-		imported, err := navcore.DownloadedSongs(stableMusicRoot, stableDownloadsDir)
-		if err != nil {
-			logMsg("Could not read some stable artwork records: " + err.Error())
-		}
-		for _, song := range imported {
-			if filepath.Dir(song.Path) == stableDownloadsDir {
-				byPath[song.Path] = song
-			}
-		}
-	}
-	// Browse the whole public library. Only this edition’s download records confer ownership.
-	for _, root := range []string{MUSIC_ROOT, CARD_MUSIC_DIR} {
+	for _, root := range []string{playbackCacheRoot, CARD_MUSIC_DIR} {
 		filepath.Walk(root, func(path string, info os.FileInfo, err error) error {
 			if err != nil || !app.Running {
 				return nil
@@ -96,7 +82,7 @@ func (app *MiyooPod) runLibraryScan(onComplete func()) {
 			ext := strings.ToLower(filepath.Ext(path))
 			switch ext {
 			case ".mp3", ".flac", ".ogg":
-				if !info.Mode().IsRegular() || info.Size() == 0 || navcore.TemporaryTrack(MUSIC_ROOT, path) {
+				if !info.Mode().IsRegular() || info.Size() == 0 || navcore.TemporaryTrack(playbackCacheRoot, path) {
 					return nil
 				}
 				app.scanTrack(path, byPath[path])
@@ -717,7 +703,7 @@ func (app *MiyooPod) loadLibraryJSON() error {
 	// Filter out system metadata files that may be in cached library from a previous scan
 	filtered := lib.Tracks[:0]
 	for _, track := range lib.Tracks {
-		if navcore.TemporaryTrack(MUSIC_ROOT, track.Path) {
+		if navcore.TemporaryTrack(playbackCacheRoot, track.Path) {
 			return fmt.Errorf("reindexing permanent music separately from playback cache")
 		}
 		if !isSystemPath(filepath.Base(track.Path)) {

@@ -177,6 +177,17 @@ func (c *Client) saveSong(ctx context.Context, root, shared string, s Song, stan
 	p.Standalone = p.Standalone || standalone
 	p.Song = s
 	if p.Filename == "" || !hasAudio(filepath.Join(shared, p.Filename)) {
+		if c.PlaybackCacheRoot != "" && c.PlaybackCacheRoot != root && !hasAudio(private) {
+			cached := FilePath(c.MusicDir(c.PlaybackCacheRoot), s.ID)
+			if hasAudio(cached) {
+				if err := os.MkdirAll(filepath.Dir(private), 0700); err != nil {
+					return err
+				}
+				if err := os.Rename(cached, private); err != nil {
+					return err
+				}
+			}
+		}
 		if _, err = c.CacheSong(ctx, s, c.MusicDir(root)); err != nil {
 			return err
 		}

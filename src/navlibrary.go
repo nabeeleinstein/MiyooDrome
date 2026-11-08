@@ -17,22 +17,36 @@ func navTracks(dir string, songs []navcore.Song, offline bool) []*Track {
 	tracks := make([]*Track, 0, len(songs))
 	for i := range songs {
 		s := &songs[i]
-		tracks = append(tracks, &Track{NavDir: dir, Path: navcore.PlayablePath(SHARED_MUSIC_DIR, dir, s.ID), Title: s.Title, Artist: s.Artist, Album: s.Album, AlbumArtist: s.Artist, Duration: float64(s.Duration), TrackNum: s.Track, DiscNum: s.Disc, NavSong: s, Offline: offline})
+		tracks = append(tracks, &Track{NavDir: dir, Path: playbackPath(dir, s.ID), Title: s.Title, Artist: s.Artist, Album: s.Album, AlbumArtist: s.Artist, Duration: float64(s.Duration), TrackNum: s.Track, DiscNum: s.Disc, NavSong: s, Offline: offline})
 	}
 	return tracks
 }
 
 func (t *Track) navDir() string {
 	if t.NavDir != "" {
+		if filepath.Dir(t.NavDir) == legacyTestRoot {
+			return filepath.Join(MUSIC_ROOT, filepath.Base(t.NavDir))
+		}
 		return t.NavDir
 	}
-	return filepath.Dir(t.Path)
+	dir := filepath.Dir(t.Path)
+	if filepath.Dir(dir) == legacyTestRoot {
+		return filepath.Join(MUSIC_ROOT, filepath.Base(dir))
+	}
+	return dir
 }
 
+func playbackPath(dir, id string) string {
+	path := navcore.PlayablePath(SHARED_MUSIC_DIR, dir, id)
+	if path == navcore.FilePath(dir, id) && filepath.Dir(dir) == MUSIC_ROOT && playbackCacheRoot != MUSIC_ROOT {
+		return navcore.FilePath(filepath.Join(playbackCacheRoot, filepath.Base(dir)), id)
+	}
+	return path
+}
 func (t *Track) resolveNavPath() {
 	if t.NavSong != nil {
 		t.NavDir = t.navDir()
-		t.Path = navcore.PlayablePath(SHARED_MUSIC_DIR, t.NavDir, t.NavSong.ID)
+		t.Path = playbackPath(t.NavDir, t.NavSong.ID)
 	}
 }
 
@@ -60,7 +74,7 @@ func (app *MiyooPod) prepareNavTrack(t *Track) error {
 	defer c.HTTP.CloseIdleConnections()
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
 	defer cancel()
-	t.Path, err = c.CacheForPlayback(ctx, MUSIC_ROOT, SHARED_MUSIC_DIR, *t.NavSong, app.cacheLimit(), app.activeMusicPath())
+	t.Path, err = c.CacheForPlayback(ctx, playbackCacheRoot, SHARED_MUSIC_DIR, *t.NavSong, app.cacheLimit(), app.activeMusicPath())
 	return err
 }
 

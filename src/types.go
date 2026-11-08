@@ -12,7 +12,7 @@ import (
 
 // App metadata
 const (
-	APP_VERSION     = "0.3.2"
+	APP_VERSION     = "0.4.0"
 	MIYOOPOD_AUTHOR = "Danilo Fragoso"
 	projectURL      = "https://github.com/nabeeleinstein/MiyooDrome"
 )
@@ -24,10 +24,11 @@ const SCREEN_HEIGHT = 480
 // Music source
 const appDataDir = "/mnt/SDCARD/App/" + appFolder + "/data"
 const CARD_MUSIC_DIR = "/mnt/SDCARD/Media/Music"
-const SHARED_MUSIC_DIR = CARD_MUSIC_DIR + "/" + appFolder
-const stableMusicRoot = "/mnt/SDCARD/App/MiyooDrome/data/music"
-const stableDownloadsDir = CARD_MUSIC_DIR + "/MiyooDrome"
-const MUSIC_ROOT = appDataDir + "/music"
+const SHARED_MUSIC_DIR = CARD_MUSIC_DIR + "/MiyooDrome"
+const MUSIC_ROOT = "/mnt/SDCARD/App/MiyooDrome/data/music"
+const legacyTestPublic = CARD_MUSIC_DIR + "/MiyooDromeTest"
+const legacyTestRoot = "/mnt/SDCARD/App/MiyooDromeTest/data/music"
+const playbackCacheRoot = appDataDir + "/music"
 const LIBRARY_JSON_PATH = appDataDir + "/library.json"
 const ARTWORK_DIR = appDataDir + "/artwork/"
 

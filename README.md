@@ -14,9 +14,9 @@ Pushes to the `test` branch produce a **MiyooDromeTest-OnionOS** install ZIP. It
 
 The [installation guide](INSTALL.md) covers keyboard controls, HTTPS, offline use and troubleshooting.
 
-In the test app, **Downloaded library** groups songs, albums, artists and imported playlists. New downloads appear immediately. Use **Settings → Rescan imported music** to scan MP3, FLAC and Ogg files anywhere under the SD card’s `Media/Music/` folder, including downloads from the stable player.
+**Downloaded library** groups songs, albums, artists and imported playlists. New downloads appear immediately. Use **Settings → Rescan imported music** to scan MP3, FLAC and Ogg files anywhere under the SD card’s `Media/Music/` folder, including manually copied albums.
 
-## Playback and storage (test branch)
+## Playback and storage
 
 | Action | On the handheld |
 | --- | --- |
@@ -24,7 +24,7 @@ In the test app, **Downloaded library** groups songs, albums, artists and import
 | Play a collection | Choose **Play album**, or open an artist and choose **Play all songs** or **Shuffle artist**. |
 | Keep a song | Highlight an online song and press **X**, or press **Y** on Now Playing. |
 | Keep an album | Choose **Download album** in its track list. An interrupted download can be resumed by choosing it again. |
-| Play offline | Open **Downloaded library → Songs** or **Albums** in the test app. |
+| Play offline | Open **Downloaded library → Songs** or **Albums**. |
 | Pause while browsing | Press **L2**. Your selection stays in place. |
 | View track details | Press **Up** on Now Playing for format, bitrate and controls. Press **B** to return. |
 | Open the player | Press **R2** from an app screen. **B** returns. |
@@ -32,11 +32,11 @@ In the test app, **Downloaded library** groups songs, albums, artists and import
 | Delete a saved album | Highlight it under **Downloaded library → Albums**, press **X** at the **Delete album** prompt and confirm. |
 | Free cache space | Choose **Settings → Storage → Clear old tracks**. Use **Cache limit** to switch between 128, 256 (default) and 512 MiB. |
 
-**Saved music** goes into `Media/Music/MiyooDrome/` on the SD card as regular MP3 files. Run a library scan in MiyooPod or another player to pick them up. Version 0.3.1 moves explicit 0.3.0 downloads here automatically on launch. Ordinary playback uses a separate, size-limited cache under `App/MiyooDrome/data/`. Clearing that cache keeps your downloads.
+**Saved music** goes into `Media/Music/MiyooDrome/` on the SD card as regular MP3 files. Run a library scan in MiyooPod or another player to pick them up. Version 0.4.0 brings earlier test downloads and their artwork into this library on launch. Both updated editions use the same download records. Deleting a download affects both. Ordinary playback uses a separate, size-limited cache under `App/MiyooDrome/data/`. Clearing that cache keeps your downloads.
 
 ## Credits and license
 
-MiyooDrome is based on **MiyooPod by Danilo Fragoso**, who created the handheld interface, controls and SDL2_mixer playback engine. This adaptation adds Navidrome sign-in, online browsing, search, cover art and downloads. The test app’s About QR opens the MiyooDrome repository. [Original MiyooPod project](https://github.com/danfragoso/miyoopod) · [Upstream documentation](https://github.com/danfragoso/miyoopod#readme)
+MiyooDrome is based on **MiyooPod by Danilo Fragoso**, who created the handheld interface, controls and SDL2_mixer playback engine. This adaptation adds Navidrome sign-in, online browsing, search, cover art and downloads. The About QR opens the MiyooDrome repository. [Original MiyooPod project](https://github.com/danfragoso/miyoopod) · [Upstream documentation](https://github.com/danfragoso/miyoopod#readme)
 
 The original MiyooPod code is copyright © 2026 Danilo Fragoso and is distributed under the MIT License. The install ZIP includes the original copyright notice and the third-party notices. [MIT License](LICENSE) · [Third-party credits and licenses](THIRD_PARTY_LICENSES.md)
 

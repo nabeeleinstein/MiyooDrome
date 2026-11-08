@@ -125,8 +125,9 @@ type response struct {
 	} `json:"subsonic-response"`
 }
 type Client struct {
-	Config Config
-	HTTP   *http.Client
+	PlaybackCacheRoot string // Optional edition-specific cache for promoting a played song.
+	Config            Config
+	HTTP              *http.Client
 }
 
 func New(c Config) (*Client, error) {

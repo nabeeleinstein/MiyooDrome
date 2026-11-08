@@ -211,7 +211,7 @@ func main() {
 	go app.RunUI()
 	time.Sleep(100 * time.Millisecond)
 
-	if err := navcore.CleanupInterrupted(MUSIC_ROOT); err != nil {
+	if err := navcore.CleanupInterrupted(playbackCacheRoot); err != nil {
 		logMsg("Could not remove an interrupted download: " + err.Error())
 	}
 
@@ -220,6 +220,11 @@ func main() {
 	}
 	if err := navcore.MigrateDownloads(MUSIC_ROOT, SHARED_MUSIC_DIR); err != nil {
 		logMsg("Could not finish moving saved music: " + err.Error())
+	}
+
+	if err := navcore.MergeLegacyDownloads(legacyTestRoot, legacyTestPublic, MUSIC_ROOT, SHARED_MUSIC_DIR); err != nil {
+		logMsg("Shared download migration: " + err.Error())
+		app.notify("Download migration incomplete. Restart to retry.")
 	}
 
 	// Load library from JSON or perform full scan
@@ -261,7 +266,7 @@ func main() {
 
 	// Restore saved playback state (queue, position) before building menu
 	app.restorePlaybackState()
-	if _, err := navcore.TrimCache(MUSIC_ROOT, app.cacheLimit(), app.activeMusicPath()); err != nil {
+	if _, err := navcore.TrimCache(playbackCacheRoot, app.cacheLimit(), app.activeMusicPath()); err != nil {
 		logMsg("Could not trim playback cache: " + err.Error())
 	}
 

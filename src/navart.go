@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"image"
-	"path/filepath"
 	"time"
 
 	"github.com/nabeeleinstein/MiyooDrome/navcore"
@@ -75,8 +74,7 @@ func (app *MiyooPod) drawNavCover(p navPreview, x, y, size int) {
 	app.drawNavPlaceholder(x, y, size)
 }
 
-// Prefer the local image. Both editions use the same server/account directory
-// key. A read-only lookup can reuse stable art without sharing credentials.
+// Try shared offline artwork before connecting to the active account.
 func loadNavCover(ctx context.Context, p navPreview) (image.Image, error) {
 	audioPath := ""
 	if p.songID != "" {
@@ -85,12 +83,6 @@ func loadNavCover(ctx context.Context, p navPreview) (image.Image, error) {
 	img, err := navcore.ResolveCover(ctx, nil, p.dir, p.id, audioPath, p.albumID, p.songID)
 	if img != nil {
 		return img, err
-	}
-	if MUSIC_ROOT != stableMusicRoot && filepath.Dir(p.dir) == MUSIC_ROOT {
-		stableDir := filepath.Join(stableMusicRoot, filepath.Base(p.dir))
-		if img, err := navcore.Cover(ctx, nil, stableDir, p.id); err == nil {
-			return img, nil
-		}
 	}
 	c, configErr := navClient()
 	if configErr != nil || c.MusicDir(MUSIC_ROOT) != p.dir {

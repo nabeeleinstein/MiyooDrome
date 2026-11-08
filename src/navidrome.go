@@ -19,7 +19,11 @@ func navClient() (*navcore.Client, error) {
 	if err != nil {
 		return nil, err
 	}
-	return navcore.New(c)
+	client, err := navcore.New(c)
+	if err == nil {
+		client.PlaybackCacheRoot = playbackCacheRoot
+	}
+	return client, err
 }
 
 func (app *MiyooPod) navError(message string) []*MenuItem {

@@ -67,13 +67,13 @@ func (app *MiyooPod) downloadSong(t *Track) {
 		if _, err := navcore.ResolveCover(artCtx, c, dir, id, navcore.PlayablePath(SHARED_MUSIC_DIR, dir, s.ID), s.AlbumID, s.ID); err != nil {
 			return navTaskResult{message: "Song saved. Artwork unavailable offline."}
 		}
-		return navTaskResult{message: "Saved to Media/Music/" + appFolder}
+		return navTaskResult{message: "Saved to Media/Music/MiyooDrome"}
 	})
 }
 func (app *MiyooPod) storageMenu(root *MenuScreen) *MenuItem {
 	page := &MenuScreen{Title: "Storage", Parent: root, ReloadOnOpen: true}
 	page.Builder = func() []*MenuItem {
-		used, err := navcore.CacheUsage(MUSIC_ROOT)
+		used, err := navcore.CacheUsage(playbackCacheRoot)
 		if err != nil {
 			return app.navError(err.Error())
 		}
@@ -94,14 +94,14 @@ func (app *MiyooPod) storageMenu(root *MenuScreen) *MenuItem {
 					app.showError("Could not save cache limit")
 					return
 				}
-				if _, err := navcore.TrimCache(MUSIC_ROOT, app.cacheLimit(), app.activeMusicPath()); err != nil {
+				if _, err := navcore.TrimCache(playbackCacheRoot, app.cacheLimit(), app.activeMusicPath()); err != nil {
 					app.showError("Could not trim cache")
 				}
 				page.Items = page.Builder()
 				app.MenuBG = nil
 			}},
 			{Label: "Clear old tracks", Action: func() {
-				removed, err := navcore.TrimCache(MUSIC_ROOT, 0, app.activeMusicPath())
+				removed, err := navcore.TrimCache(playbackCacheRoot, 0, app.activeMusicPath())
 				if err != nil {
 					app.showError("Could not clear some tracks")
 					return

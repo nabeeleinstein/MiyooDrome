@@ -147,7 +147,7 @@ func (app *MiyooPod) deleteAlbumItem(home, album *MenuScreen, saved *navcore.Sav
 	item := submenu("Delete downloaded album", album, false, func(confirm *MenuScreen) []*MenuItem {
 		return []*MenuItem{
 			{Label: "Cancel", Action: func() { app.MenuStack = app.MenuStack[:len(app.MenuStack)-1] }},
-			{Label: "Delete from this device", Action: func() {
+			{Label: "Delete album from shared library", Action: func() {
 				if err := navcore.DeleteAlbum(MUSIC_ROOT, SHARED_MUSIC_DIR, saved.Dir, saved.Album.ID); err != nil {
 					app.showError(err.Error())
 					return
@@ -192,7 +192,7 @@ func (app *MiyooPod) confirmDeleteSong(parent *MenuScreen, track *Track) {
 		confirm := &MenuScreen{Title: "Remove " + track.Title + "?", Parent: parent, Built: true}
 		confirm.Items = []*MenuItem{
 			{Label: "Cancel", Action: func() { app.MenuStack = app.MenuStack[:len(app.MenuStack)-1] }},
-			{Label: "Delete song from device", Action: func() {
+			{Label: "Delete song from shared library", Action: func() {
 				dir := track.navDir()
 				if err := navcore.DeleteSong(MUSIC_ROOT, SHARED_MUSIC_DIR, dir, track.NavSong.ID); err != nil {
 					app.showError(err.Error())

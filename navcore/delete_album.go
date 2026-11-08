@@ -153,7 +153,7 @@ func DeleteSong(root, shared, dir, id string) error {
 	return removeSongFiles(shared, private, pin)
 }
 
-func removeSongFiles(shared, private string, pin downloadPin) error {
+func validateDownloadName(private string, pin downloadPin) error {
 	if pin.Filename != "" {
 		key := sha256.Sum256([]byte(filepath.Base(filepath.Dir(private)) + "\x00" + pin.ID))
 		suffix := fmt.Sprintf(" [%x]", key[:6])
@@ -164,6 +164,15 @@ func removeSongFiles(shared, private string, pin downloadPin) error {
 		if !strings.HasSuffix(stem, suffix) {
 			return errors.New("download filename does not match its record")
 		}
+	}
+	return nil
+}
+
+func removeSongFiles(shared, private string, pin downloadPin) error {
+	if err := validateDownloadName(private, pin); err != nil {
+		return err
+	}
+	if pin.Filename != "" {
 		if err := removeIfPresent(filepath.Join(shared, pin.Filename)); err != nil {
 			return err
 		}
