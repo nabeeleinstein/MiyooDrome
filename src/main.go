@@ -397,6 +397,7 @@ func main() {
 }
 
 func (app *MiyooPod) openPlayer() {
+	app.trackDetails = false
 	if app.CurrentScreen != ScreenNowPlaying {
 		app.playerReturn = app.CurrentScreen
 		app.searchRelease = NONE
@@ -406,6 +407,9 @@ func (app *MiyooPod) openPlayer() {
 	app.LastKey = NONE
 }
 func (app *MiyooPod) setScreen(screen ScreenType) {
+	if screen != ScreenNowPlaying {
+		app.trackDetails = false
+	}
 	app.CurrentScreen = screen
 }
 
@@ -483,8 +487,14 @@ func (app *MiyooPod) handleKey(key Key) {
 		return
 	}
 
-	// Global keys (work from any screen)
+	// Sign-in and search own their keyboard input above.
 	switch key {
+	case L2:
+		if app.CurrentScreen != ScreenLibraryScan {
+			app.togglePlayPause()
+			app.drawCurrentScreen()
+		}
+		return
 	case START:
 		// Go to Now Playing screen (not allowed during library scan)
 		if app.CurrentScreen == ScreenLibraryScan {
@@ -565,12 +575,24 @@ func (app *MiyooPod) handleKey(key Key) {
 
 func (app *MiyooPod) handleNowPlayingKey(key Key) {
 	switch key {
+	case UP:
+		if app.Playing != nil && app.Playing.Track != nil {
+			app.trackDetails = true
+			app.LastKey = NONE
+			app.drawCurrentScreen()
+		}
 	case Y:
 		if t := app.Playing.Track; t != nil && t.NavSong != nil && !t.Offline {
 			app.downloadSong(t)
 			app.drawCurrentScreen()
 		}
 	case LEFT, B:
+		if app.trackDetails {
+			app.trackDetails = false
+			app.LastKey = NONE
+			app.drawCurrentScreen()
+			return
+		}
 		app.setScreen(app.playerReturn)
 		app.playerReturn = ScreenMenu
 		app.drawCurrentScreen()

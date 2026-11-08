@@ -407,7 +407,7 @@ const (
 	COVER_CENTER_SIZE = 200
 	COVER_SIDE_SIZE   = 140
 	COVER_FAR_SIZE    = 100
-	COVER_CENTER_Y    = 60
+	COVER_CENTER_Y    = 95
 	COVER_CENTER_X    = 30
 	COVER_SIDE_OFFSET = 170
 	COVER_SIDE_Y      = 100
@@ -659,6 +659,7 @@ type MiyooPod struct {
 
 	// Now Playing screen cache (pre-rendered background)
 	NowPlayingBG *image.RGBA
+	trackDetails bool // Details page within Now Playing
 	NPCacheDirty bool
 
 	// Menu screen cache (pre-rendered frame for smooth navigation)

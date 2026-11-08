@@ -222,7 +222,7 @@ func (app *MiyooPod) fastDrawTimeStringRight(text string, x, y int, r, g, b uint
 func (app *MiyooPod) fastDrawProgressBar(x, y, width int, position, duration float64) {
 	bgR, bgG, bgB, _ := parseHexColor(app.CurrentTheme.ProgBG)
 	fgR, fgG, fgB, _ := parseHexColor(app.CurrentTheme.Progress)
-	dimR, dimG, dimB, _ := parseHexColor(app.CurrentTheme.Dim)
+	textR, textG, textB, _ := parseHexColor(app.CurrentTheme.ItemTxt)
 
 	// Background track
 	app.fastFillRect(x, y, width, PROGRESS_BAR_H, bgR, bgG, bgB, 255)
@@ -244,8 +244,8 @@ func (app *MiyooPod) fastDrawProgressBar(x, y, width int, position, duration flo
 	durText := formatTime(duration)
 
 	timeY := y - 15
-	app.fastDrawTimeString(posText, x, timeY, dimR, dimG, dimB)
-	app.fastDrawTimeStringRight(durText, x+width, timeY, dimR, dimG, dimB)
+	app.fastDrawTimeString(posText, x, timeY, textR, textG, textB)
+	app.fastDrawTimeStringRight(durText, x+width, timeY, textR, textG, textB)
 }
 
 // fastBlitImage copies an image.Image directly to the framebuffer at dx,dy

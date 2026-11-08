@@ -14,6 +14,7 @@ The password uses MiyooDrome’s masked QWERTY keyboard. **A** types, **X** dele
 
 - Open **Search** for the full server or use **Search artists** and **Search albums** within those lists. Confirm the Onion keyboard to see results. If the system keyboard is unavailable, press **START** on the built-in keyboard.
 - Hold **Down** or **Up** for about three quarters of a second on a long alphabetical list to jump between initials. Tap for a single row.
+- Press **L2** while browsing to pause or resume the current song without leaving the list. On **Now Playing**, **A** also toggles playback. **Up** opens track details and controls. **B** returns to the song. Sign-in and search keep their own keyboard controls.
 - Press **Y** on a song for queue feedback. **R2** opens **Now Playing** from an unlocked app screen, including About and download progress. **B** returns. Finish or cancel Onion’s keyboard before pressing **R2**.
 - Open **Downloaded library** for songs, artists and albums. To remove a complete album, open it and choose **Delete downloaded album**. Cancel is selected first. Tracks explicitly saved individually in this build stay available, as do tracks used by another saved album. To keep an individual song from an older album download, save the song with **X** before removing the album.
 - After copying your own music or playlists onto the card, choose **Settings → Rescan imported music**. Navidrome downloads and their artwork appear automatically when available.

@@ -310,50 +310,6 @@ func (app *MiyooPod) drawPauseIcon(x, y, size int) {
 	dc.Fill()
 }
 
-// drawNextIcon draws a next track icon (>>)
-func (app *MiyooPod) drawNextIcon(x, y, size int) {
-	dc := app.DC
-	fx := float64(x)
-	fy := float64(y)
-	fs := float64(size)
-
-	// First triangle
-	dc.MoveTo(fx, fy)
-	dc.LineTo(fx+fs*0.4, fy+fs/2)
-	dc.LineTo(fx, fy+fs)
-	dc.ClosePath()
-	dc.Fill()
-
-	// Second triangle
-	dc.MoveTo(fx+fs*0.5, fy)
-	dc.LineTo(fx+fs*0.9, fy+fs/2)
-	dc.LineTo(fx+fs*0.5, fy+fs)
-	dc.ClosePath()
-	dc.Fill()
-}
-
-// drawPrevIcon draws a previous track icon (<<)
-func (app *MiyooPod) drawPrevIcon(x, y, size int) {
-	dc := app.DC
-	fx := float64(x)
-	fy := float64(y)
-	fs := float64(size)
-
-	// First triangle (pointing left)
-	dc.MoveTo(fx+fs*0.4, fy)
-	dc.LineTo(fx, fy+fs/2)
-	dc.LineTo(fx+fs*0.4, fy+fs)
-	dc.ClosePath()
-	dc.Fill()
-
-	// Second triangle (pointing left)
-	dc.MoveTo(fx+fs*0.9, fy)
-	dc.LineTo(fx+fs*0.5, fy+fs/2)
-	dc.LineTo(fx+fs*0.9, fy+fs)
-	dc.ClosePath()
-	dc.Fill()
-}
-
 // drawShuffleIcon draws a shuffle icon (two crossing arrows)
 func (app *MiyooPod) drawShuffleIcon(x, y, size int) {
 	dc := app.DC
@@ -537,32 +493,18 @@ func (app *MiyooPod) truncateText(text string, maxWidth float64, face font.Face)
 		return text
 	}
 
-	// Binary search for optimal truncation point
-	left, right := 0, len(text)
-	bestFit := 0
-
-	for left <= right {
-		mid := (left + right) / 2
-		if mid == 0 {
-			return "..."
-		}
-
-		truncated := text[:mid] + "..."
-		w := app.measureTextCached(truncated, face)
-
-		if w <= maxWidth {
-			bestFit = mid
-			left = mid + 1
+	// Search rune boundaries so a clipped title keeps valid UTF-8.
+	runes := []rune(text)
+	lo, hi := 0, len(runes)
+	for lo < hi {
+		mid := (lo + hi + 1) / 2
+		if app.measureTextCached(string(runes[:mid])+"...", face) <= maxWidth {
+			lo = mid
 		} else {
-			right = mid - 1
+			hi = mid - 1
 		}
 	}
-
-	if bestFit == 0 {
-		return "..."
-	}
-
-	return text[:bestFit] + "..."
+	return string(runes[:lo]) + "..."
 }
 
 // formatTime converts seconds to "M:SS" format (zero-allocation for common values)
@@ -605,46 +547,32 @@ func (app *MiyooPod) drawCenteredText(text string, y float64, face font.Face, co
 
 func (app *MiyooPod) drawStatusIndicators(y int) {
 	dc := app.DC
-
-	// Controls centered on screen (640/2 = 320, icon group span ≈ 210)
-	rightX := 215
-
-	// Shuffle icon
-	if app.Queue != nil && app.Queue.Shuffle {
-		dc.SetHexColor(app.CurrentTheme.Accent)
-	} else {
-		dc.SetHexColor(app.CurrentTheme.Dim)
-	}
-	app.drawShuffleIcon(rightX, y-10, 20)
-
-	// Previous button
 	dc.SetHexColor(app.CurrentTheme.ItemTxt)
-	app.drawPrevIcon(rightX+50, y-10, 20)
-
-	// Play/Pause in center
-	if app.Playing != nil && app.Playing.State == StatePlaying {
-		dc.SetHexColor(app.CurrentTheme.Accent)
-		app.drawPauseIcon(rightX+100, y-10, 20)
-	} else {
-		dc.SetHexColor(app.CurrentTheme.Accent)
-		app.drawPlayIcon(rightX+100, y-10, 20)
+	dc.SetFontFace(app.FontArtist)
+	label := "Stopped"
+	switch app.Playing.State {
+	case StatePlaying:
+		app.drawPlayIcon(40, y-9, 18)
+		label = "Playing"
+	case StatePaused:
+		app.drawPauseIcon(40, y-9, 18)
+		label = "Paused"
+	default:
+		dc.DrawRectangle(41, float64(y-8), 16, 16)
+		dc.Fill()
 	}
-
-	// Next button
-	dc.SetHexColor(app.CurrentTheme.ItemTxt)
-	app.drawNextIcon(rightX+140, y-10, 20)
-
-	// Repeat icon
+	dc.DrawStringAnchored(label, 72, float64(y), 0, .5)
+	x := SCREEN_WIDTH - 60
 	if app.Queue != nil && app.Queue.Repeat != RepeatOff {
-		dc.SetHexColor(app.CurrentTheme.Accent)
-	} else {
-		dc.SetHexColor(app.CurrentTheme.Dim)
+		if app.Queue.Repeat == RepeatOne {
+			app.drawRepeatOneIcon(x, y-10, 20)
+		} else {
+			app.drawRepeatIcon(x, y-10, 20)
+		}
+		x -= 40
 	}
-
-	if app.Queue != nil && app.Queue.Repeat == RepeatOne {
-		app.drawRepeatOneIcon(rightX+190, y-10, 20)
-	} else {
-		app.drawRepeatIcon(rightX+190, y-10, 20)
+	if app.Queue != nil && app.Queue.Shuffle {
+		app.drawShuffleIcon(x, y-10, 20)
 	}
 }
 
@@ -678,17 +606,15 @@ func (app *MiyooPod) drawStatusBar() {
 			app.drawButtonLegend(253, centerY, "R2", "Now Playing")
 			if app.isSearchableMenu() {
 				app.drawButtonLegend(493, centerY, "SEL", "Search")
+			} else if app.Playing != nil && app.Playing.Track != nil {
+				app.drawButtonLegend(462, centerY, "L2", "Play / Pause")
 			}
 		}
 	case ScreenNowPlaying:
-		app.drawButtonLegend(12, centerY, "B", "Back")
-		app.drawButtonLegend(110, centerY, "A", "Play/Pause")
-		app.drawButtonLegend(270, centerY, "L/R", "Prev/Next")
-		app.drawButtonLegend(400, centerY, "→", "Queue")
-		if app.Playing != nil && app.Playing.Track != nil && app.Playing.Track.NavSong != nil && !app.Playing.Track.Offline {
-			app.drawButtonLegend(504, centerY, "Y", "Save")
-		} else if app.Playing != nil && app.Playing.Track != nil && app.Playing.Track.Lyrics != "" {
-			app.drawButtonLegend(510, centerY, "START", "Lyrics")
+		app.drawButtonLegend(30, centerY, "B", "Back")
+		if !app.trackDetails {
+			app.drawButtonLegend(213, centerY, "A", "Play / Pause")
+			app.drawButtonLegend(480, centerY, "Up", "Details")
 		}
 	case ScreenQueue:
 		app.drawButtonLegend(12, centerY, "B", "Back")
@@ -728,7 +654,11 @@ func (app *MiyooPod) drawButtonLegend(x int, centerY float64, button string, lab
 	dc.DrawStringAnchored(button, badgeX+badgeW/2, centerY, 0.5, 0.5)
 
 	// Label text
-	dc.SetHexColor(app.CurrentTheme.Dim)
+	if app.CurrentScreen == ScreenNowPlaying {
+		dc.SetHexColor(app.CurrentTheme.ItemTxt)
+	} else {
+		dc.SetHexColor(app.CurrentTheme.Dim)
+	}
 	dc.DrawStringAnchored(label, badgeX+badgeW+6, centerY, 0, 0.5)
 }
 

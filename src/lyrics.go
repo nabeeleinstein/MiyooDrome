@@ -103,9 +103,9 @@ func activeLRCIndex(lines []lrcLine, pos float64) int {
 	return active
 }
 
-// wrapLyrics splits raw lyrics text into display lines no wider than maxWidth,
+// wrapTextLines splits text into display lines no wider than maxWidth,
 // preserving original line breaks.
-func wrapLyrics(text string, maxWidth float64, face font.Face, measure func(string, font.Face) float64) []string {
+func wrapTextLines(text string, maxWidth float64, face font.Face, measure func(string, font.Face) float64) []string {
 	var lines []string
 	for _, rawLine := range strings.Split(text, "\n") {
 		rawLine = strings.TrimRight(rawLine, "\r")
@@ -157,13 +157,13 @@ func (app *MiyooPod) buildLyricsCache() {
 				display = append(display, lyricsDisplayLine{"", i})
 				continue
 			}
-			for _, wl := range wrapLyrics(l.text, maxWidth, app.FontMenu, app.measureString) {
+			for _, wl := range wrapTextLines(l.text, maxWidth, app.FontMenu, app.measureString) {
 				display = append(display, lyricsDisplayLine{wl, i})
 			}
 		}
 		app.LyricsCachedDisplay = display
 	} else {
-		app.LyricsPlainLines = wrapLyrics(track.Lyrics, maxWidth, app.FontMenu, app.measureString)
+		app.LyricsPlainLines = wrapTextLines(track.Lyrics, maxWidth, app.FontMenu, app.measureString)
 	}
 }
 

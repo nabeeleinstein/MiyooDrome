@@ -15,17 +15,12 @@ func (app *MiyooPod) DrawCoverflow() {
 		return
 	}
 	cf := app.Coverflow
-	if cf == nil || len(cf.Albums) == 0 {
-		return
+	var coverImg image.Image
+	if cf != nil && cf.CenterIndex >= 0 && cf.CenterIndex < len(cf.Albums) {
+		coverImg = app.getCachedCover(cf.Albums[cf.CenterIndex], COVER_CENTER_SIZE)
 	}
-
-	if cf.CenterIndex < 0 || cf.CenterIndex >= len(cf.Albums) {
-		return
-	}
-
-	album := cf.Albums[cf.CenterIndex]
-	coverImg := app.getCachedCover(album, COVER_CENTER_SIZE)
 	if coverImg == nil {
+		app.drawNavPlaceholder(COVER_CENTER_X, COVER_CENTER_Y, COVER_CENTER_SIZE)
 		return
 	}
 

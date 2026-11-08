@@ -25,6 +25,8 @@ In the test app, **Downloaded library** groups songs, albums, artists and import
 | Keep a song | Highlight an online song and press **X**, or press **Y** on Now Playing. |
 | Keep an album | Choose **Download album** in its track list. An interrupted download can be resumed by choosing it again. |
 | Play offline | Open **Downloaded library → Songs** or **Albums** in the test app. |
+| Pause while browsing | Press **L2**. Your selection stays in place. |
+| View track details | Press **Up** on Now Playing for format, bitrate and controls. Press **B** to return. |
 | Open the player | Press **R2** from an app screen. **B** returns. |
 | Delete a saved album | Open it under **Downloaded library → Albums**, choose **Delete downloaded album** and confirm. |
 | Free cache space | Choose **Storage → Clear old tracks**. Use **Cache limit** to switch between 128, 256 (default) and 512 MiB. |

@@ -15,6 +15,7 @@ The password is masked during entry. The player verifies the login before saving
 
 - In the test app, **Search** opens Onion’s keyboard. **Search artists** and **Search albums** search the server within that category. **Search these songs** filters the current album. **SELECT** searches the current list when its search hint is visible.
 - Tap **Up/Down** to move one row. Hold either direction on a long alphabetical list to jump by initial. **Y** on a song shows whether it was added to the queue.
+- In the test player, press **L2** while browsing to pause or resume in place. Press **Up** on **Now Playing** for audio format, available bitrate and playback shortcuts. Press **B** to return.
 - Press **R2** on any unlocked app screen for **Now Playing**. Press **B** to return. While Onion’s own keyboard is open, finish or cancel text entry first. The home menu also includes **Now Playing** after a restart. Press **A** to resume.
 - **Downloaded library** groups saved and imported music. Use **Settings → Rescan imported music** after manually copying tracks or playlists. Downloads appear immediately and cache their available Navidrome artwork. Local files use available embedded artwork.
 - Inside an album, **Play album** queues the tracks in disc and track order. Inside an artist, **Play all songs** and **Shuffle artist** queue that artist’s credited tracks from the albums returned by Navidrome.
