@@ -29,7 +29,7 @@ In the test app, **Downloaded library** groups songs, albums, artists and import
 | View track details | Press **Up** on Now Playing for format, bitrate and controls. Press **B** to return. |
 | Open the player | Press **R2** from an app screen. **B** returns. |
 | Delete a saved song | In **Downloaded library**, highlight the downloaded track, press **X** and confirm. |
-| Delete a saved album | Open it under **Downloaded library → Albums**, choose **Delete downloaded album** and confirm. |
+| Delete a saved album | Highlight it under **Downloaded library → Albums**, press **X** at the **Delete album** prompt and confirm. |
 | Free cache space | Choose **Settings → Storage → Clear old tracks**. Use **Cache limit** to switch between 128, 256 (default) and 512 MiB. |
 
 **Saved music** goes into `Media/Music/MiyooDrome/` on the SD card as regular MP3 files. Run a library scan in MiyooPod or another player to pick them up. Version 0.3.1 moves explicit 0.3.0 downloads here automatically on launch. Ordinary playback uses a separate, size-limited cache under `App/MiyooDrome/data/`. Clearing that cache keeps your downloads.

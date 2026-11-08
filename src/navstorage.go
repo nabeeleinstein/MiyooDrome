@@ -20,7 +20,7 @@ func (app *MiyooPod) activeMusicPath() string {
 	}
 	return ""
 }
-func (app *MiyooPod) selectedNavSong() *Track {
+func (app *MiyooPod) selectedMenuItem() *MenuItem {
 	if len(app.MenuStack) == 0 {
 		return nil
 	}
@@ -28,7 +28,15 @@ func (app *MiyooPod) selectedNavSong() *Track {
 	if m.SelIndex < 0 || m.SelIndex >= len(m.Items) {
 		return nil
 	}
-	t := m.Items[m.SelIndex].Track
+	return m.Items[m.SelIndex]
+}
+
+func (app *MiyooPod) selectedNavSong() *Track {
+	item := app.selectedMenuItem()
+	if item == nil {
+		return nil
+	}
+	t := item.Track
 	if t != nil && t.NavSong != nil {
 		return t
 	}
@@ -55,7 +63,10 @@ func (app *MiyooPod) downloadSong(t *Track) {
 		id := trackPreview(t).id
 		artCtx, stop := context.WithTimeout(ctx, 8*time.Second)
 		defer stop()
-		_, _ = navcore.Cover(artCtx, c, c.MusicDir(MUSIC_ROOT), id)
+		dir := c.MusicDir(MUSIC_ROOT)
+		if _, err := navcore.ResolveCover(artCtx, c, dir, id, navcore.PlayablePath(SHARED_MUSIC_DIR, dir, s.ID), s.AlbumID, s.ID); err != nil {
+			return navTaskResult{message: "Song saved. Artwork unavailable offline."}
+		}
 		return navTaskResult{message: "Saved to Media/Music/" + appFolder}
 	})
 }

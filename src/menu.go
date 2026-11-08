@@ -247,7 +247,9 @@ func (app *MiyooPod) handleMenuKey(key Key) {
 			return
 		}
 	case X:
-		if t := app.selectedNavSong(); t != nil {
+		if item := app.selectedMenuItem(); item != nil && item.DeleteAlbum != nil {
+			item.DeleteAlbum(current)
+		} else if t := app.selectedNavSong(); t != nil {
 			if t.Offline {
 				app.confirmDeleteSong(current, t)
 			} else {
@@ -458,9 +460,16 @@ func (app *MiyooPod) drawAlbumListWithPreview(current *MenuScreen) {
 
 		// Truncate text to fit left panel
 		maxWidth := float64(listWidth - 30)
+		queued := item.Track != nil && app.isTrackInQueue(item.Track)
+		if queued {
+			maxWidth -= 22
+		}
 		displayText := app.truncateText(item.Label, maxWidth, app.FontMenu)
 		dc.DrawString(displayText, 15, float64(y+MENU_ITEM_HEIGHT/2+6))
 
+		if queued {
+			app.drawQueueCheck(float64(listWidth-32), float64(y+MENU_ITEM_HEIGHT/2), selected)
+		}
 		if item.HasSubmenu {
 			dc.DrawString(">", float64(listWidth-20), float64(y+MENU_ITEM_HEIGHT/2+6))
 		}

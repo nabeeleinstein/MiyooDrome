@@ -556,6 +556,7 @@ func (s ScreenType) String() string {
 }
 
 type MenuItem struct {
+	DeleteAlbum  func(*MenuScreen)
 	IndexName    string
 	RemoteCover  *navPreview
 	Label        string

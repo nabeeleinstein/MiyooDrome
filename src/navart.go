@@ -12,6 +12,7 @@ import (
 
 type navPreview struct {
 	dir, id, title, artist string
+	albumID, songID        string
 }
 type navArtKey struct {
 	dir, id string
@@ -60,9 +61,9 @@ func (app *MiyooPod) drawNavCover(p navPreview, x, y, size int) {
 		go func() {
 			ctx, cancel := context.WithTimeout(context.Background(), 8*time.Second)
 			defer cancel()
-			img, err := loadNavCover(ctx, p)
+			img, _ := loadNavCover(ctx, p)
 			result := navArtImage{key: key}
-			if err == nil {
+			if img != nil {
 				result.large = scaledCover(img, COVER_CENTER_SIZE)
 				result.small = scaledCover(img, navPreviewSize)
 			} else {
@@ -77,9 +78,13 @@ func (app *MiyooPod) drawNavCover(p navPreview, x, y, size int) {
 // Prefer the local image. Both editions use the same server/account directory
 // key. A read-only lookup can reuse stable art without sharing credentials.
 func loadNavCover(ctx context.Context, p navPreview) (image.Image, error) {
-	img, err := navcore.Cover(ctx, nil, p.dir, p.id)
-	if err == nil {
-		return img, nil
+	audioPath := ""
+	if p.songID != "" {
+		audioPath = navcore.PlayablePath(SHARED_MUSIC_DIR, p.dir, p.songID)
+	}
+	img, err := navcore.ResolveCover(ctx, nil, p.dir, p.id, audioPath, p.albumID, p.songID)
+	if img != nil {
+		return img, err
 	}
 	if MUSIC_ROOT != stableMusicRoot && filepath.Dir(p.dir) == MUSIC_ROOT {
 		stableDir := filepath.Join(stableMusicRoot, filepath.Base(p.dir))
@@ -92,7 +97,7 @@ func loadNavCover(ctx context.Context, p navPreview) (image.Image, error) {
 		return nil, err
 	}
 	defer c.HTTP.CloseIdleConnections()
-	return navcore.Cover(ctx, c, p.dir, p.id)
+	return navcore.ResolveCover(ctx, c, p.dir, p.id, "", p.albumID, p.songID)
 }
 
 func (app *MiyooPod) drawNavPlaceholder(x, y, size int) {

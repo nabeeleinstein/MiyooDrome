@@ -97,7 +97,7 @@ func navAlbumPreview(dir string, album navcore.Album) *navPreview {
 	if id == "" {
 		id = album.ID
 	}
-	return &navPreview{dir: dir, id: id, title: album.Name, artist: album.Artist}
+	return &navPreview{dir: dir, id: id, albumID: album.ID, title: album.Name, artist: album.Artist}
 }
 
 func (app *MiyooPod) navAlbumItem(parent *MenuScreen, c *navcore.Client, album navcore.Album) *MenuItem {
@@ -148,7 +148,7 @@ func trackPreview(t *Track) navPreview {
 	if id == "" {
 		id = s.ID
 	}
-	return navPreview{dir: t.navDir(), id: id, title: t.Album, artist: t.Artist}
+	return navPreview{dir: t.navDir(), id: id, songID: s.ID, albumID: s.AlbumID, title: t.Album, artist: t.Artist}
 }
 
 func (app *MiyooPod) navPlayArtist(c *navcore.Client, artist navcore.Artist, albums []navcore.Album, shuffle bool) {

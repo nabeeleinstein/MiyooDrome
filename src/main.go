@@ -18,7 +18,9 @@ import (
 	"unsafe"
 
 	"github.com/fogleman/gg"
+	"github.com/golang/freetype/truetype"
 	"github.com/nabeeleinstein/MiyooDrome/navcore"
+	"golang.org/x/image/font"
 )
 
 func init() {
@@ -113,21 +115,33 @@ func (app *MiyooPod) Init() {
 }
 
 func (app *MiyooPod) loadFonts() {
-	fontPath := "./assets/ui_font.ttf"
-	scale := fontScaleFactor(app.FontSize)
-
-	var err error
-	app.FontHeader, err = gg.LoadFontFace(fontPath, FONT_SIZE_HEADER*scale)
-	if err != nil {
-		panic(fmt.Sprintf("Failed to load font: %v", err))
+	var family *truetype.Font
+	for _, path := range []string{"./data/ui_font.ttf", "./assets/ui_font.ttf"} {
+		data, err := os.ReadFile(path)
+		if err == nil {
+			family, err = truetype.Parse(data)
+			if err == nil {
+				break
+			}
+		}
+		if !os.IsNotExist(err) {
+			logMsg(fmt.Sprintf("Could not load font %s: %v", path, err))
+		}
 	}
-
-	app.FontMenu, _ = gg.LoadFontFace(fontPath, FONT_SIZE_MENU*scale)
-	app.FontTitle, _ = gg.LoadFontFace(fontPath, FONT_SIZE_TITLE*scale)
-	app.FontArtist, _ = gg.LoadFontFace(fontPath, FONT_SIZE_ARTIST*scale)
-	app.FontAlbum, _ = gg.LoadFontFace(fontPath, FONT_SIZE_ALBUM*scale)
-	app.FontTime, _ = gg.LoadFontFace(fontPath, FONT_SIZE_TIME*scale)
-	app.FontSmall, _ = gg.LoadFontFace(fontPath, FONT_SIZE_SMALL*scale)
+	if family == nil {
+		panic("Cannot load the player font")
+	}
+	scale := fontScaleFactor(app.FontSize)
+	face := func(size float64) font.Face {
+		return truetype.NewFace(family, &truetype.Options{Size: size * scale})
+	}
+	app.FontHeader = face(FONT_SIZE_HEADER)
+	app.FontMenu = face(FONT_SIZE_MENU)
+	app.FontTitle = face(FONT_SIZE_TITLE)
+	app.FontArtist = face(FONT_SIZE_ARTIST)
+	app.FontAlbum = face(FONT_SIZE_ALBUM)
+	app.FontTime = face(FONT_SIZE_TIME)
+	app.FontSmall = face(FONT_SIZE_SMALL)
 }
 
 func (app *MiyooPod) RunUI() {

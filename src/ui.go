@@ -181,6 +181,23 @@ func (app *MiyooPod) pollMarquee() {
 	app.triggerRefresh()
 }
 
+// Draw the queue icon independently of the text font's symbol coverage.
+func (app *MiyooPod) drawQueueCheck(x, y float64, selected bool) {
+	dc := app.DC
+	dc.Push()
+	if selected {
+		dc.SetHexColor(app.CurrentTheme.SelTxt)
+	} else {
+		dc.SetHexColor(app.CurrentTheme.Accent)
+	}
+	dc.SetLineWidth(3)
+	dc.MoveTo(x, y)
+	dc.LineTo(x+5, y+5)
+	dc.LineTo(x+15, y-6)
+	dc.Stroke()
+	dc.Pop()
+}
+
 // drawMenuItem draws a single menu row
 func (app *MiyooPod) drawMenuItem(y int, label string, selected bool, hasSubmenu bool, isPlaying bool, isInQueue bool) {
 	dc := app.DC
@@ -201,6 +218,9 @@ func (app *MiyooPod) drawMenuItem(y int, label string, selected bool, hasSubmenu
 
 	// Truncate text if needed
 	maxWidth := float64(SCREEN_WIDTH - MENU_LEFT_PAD - MENU_RIGHT_PAD - 15)
+	if isInQueue {
+		maxWidth = float64(SCREEN_WIDTH - 85 - MENU_LEFT_PAD - 8)
+	}
 	displayLabel := app.truncateText(label, maxWidth, app.FontMenu)
 
 	textY := float64(y) + float64(MENU_ITEM_HEIGHT)/2
@@ -208,13 +228,7 @@ func (app *MiyooPod) drawMenuItem(y int, label string, selected bool, hasSubmenu
 
 	// Queued indicator (checkmark)
 	if isInQueue {
-		dc.SetFontFace(app.FontMenu)
-		if selected {
-			dc.SetHexColor(app.CurrentTheme.SelTxt)
-		} else {
-			dc.SetHexColor(app.CurrentTheme.Accent)
-		}
-		dc.DrawStringAnchored("✓", float64(SCREEN_WIDTH-85), textY, 0, 0.5)
+		app.drawQueueCheck(float64(SCREEN_WIDTH-85), textY, selected)
 	}
 
 	// Playing indicator
@@ -595,14 +609,19 @@ func (app *MiyooPod) drawStatusBar() {
 	// Left side: context-sensitive button legend
 	switch app.CurrentScreen {
 	case ScreenMenu:
-		if t := app.selectedNavSong(); t != nil {
+		if item := app.selectedMenuItem(); item != nil && item.DeleteAlbum != nil {
+			app.drawButtonLegend(12, centerY, "X", "Delete album")
+			app.drawButtonLegend(230, centerY, "A", "Open")
+			app.drawButtonLegend(400, centerY, "B", "Back")
+		} else if t := app.selectedNavSong(); t != nil && t.Offline {
+			app.drawButtonLegend(12, centerY, "X", "Delete song")
+			app.drawButtonLegend(215, centerY, "A", "Play")
+			app.drawButtonLegend(328, centerY, "B", "Back")
+			app.drawButtonLegend(455, centerY, "Y", "Queue")
+		} else if t != nil {
 			app.drawButtonLegend(12, centerY, "A", "Play")
 			app.drawButtonLegend(118, centerY, "B", "Back")
-			action := "Download song"
-			if t.Offline {
-				action = "Delete song"
-			}
-			app.drawButtonLegend(232, centerY, "X", action)
+			app.drawButtonLegend(232, centerY, "X", "Download song")
 			app.drawButtonLegend(450, centerY, "Y", "Add to queue")
 		} else {
 			app.drawButtonLegend(12, centerY, "A", "Select")

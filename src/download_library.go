@@ -95,6 +95,15 @@ func (app *MiyooPod) downloadLibrary(home *MenuScreen) []*MenuItem {
 					}
 					return append([]*MenuItem{app.searchButton("Search these songs", "list")}, app.localAlbumItems(&album.Album)...)
 				})
+				if album.saved != nil {
+					item.DeleteAlbum = func(parent *MenuScreen) {
+						confirm := app.deleteAlbumItem(home, parent, album.saved).Submenu
+						confirm.Items = confirm.Builder()
+						confirm.Built = true
+						app.MenuStack = append(app.MenuStack, confirm)
+						app.LastKey = NONE
+					}
+				}
 				item.Album = &album.Album
 				item.RemoteCover = album.preview
 				item.Submenu.RemoteCover = album.preview
