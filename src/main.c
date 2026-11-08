@@ -70,8 +70,6 @@ int refreshScreenPtr(unsigned char *pixels) {
 }
 
 
-static int create_player_window(void);
-
 int init() {
     c_log("SDL2 init (VIDEO | AUDIO)...");
     if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO) < 0) {
@@ -102,10 +100,6 @@ int init() {
         display_height = 480;
     }
 
-    return create_player_window();
-}
-
-static int create_player_window(void) {
     c_log("Creating window...");
     window = SDL_CreateWindow("MiyooDrome",
         SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED,
@@ -137,7 +131,7 @@ static int create_player_window(void) {
     return 0;
 }
 
-static void destroy_player_window(void) {
+void quit() {
     if (texture) {
         SDL_DestroyTexture(texture);
     }
@@ -150,9 +144,5 @@ static void destroy_player_window(void) {
     texture = NULL;
     renderer = NULL;
     window = NULL;
-}
-
-void quit() {
-    destroy_player_window();
     SDL_Quit();
 }

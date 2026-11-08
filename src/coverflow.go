@@ -16,8 +16,8 @@ func (app *MiyooPod) DrawCoverflow() {
 	}
 	cf := app.Coverflow
 	var coverImg image.Image
-	if cf != nil && cf.CenterIndex >= 0 && cf.CenterIndex < len(cf.Albums) {
-		coverImg = app.getCachedCover(cf.Albums[cf.CenterIndex], COVER_CENTER_SIZE)
+	if cf != nil && cf.CurrentAlbum != nil {
+		coverImg = app.getCachedCover(cf.CurrentAlbum, COVER_CENTER_SIZE)
 	}
 	if coverImg == nil {
 		app.drawNavPlaceholder(COVER_CENTER_X, COVER_CENTER_Y, COVER_CENTER_SIZE)

@@ -85,7 +85,7 @@ func (app *MiyooPod) playCurrentQueueTrack() {
 		return
 	}
 
-	app.updateCoverflowForCurrentTrack()
+	app.updateCurrentAlbum()
 	app.NPCacheDirty = true
 
 	// Reset lyrics state for new track
@@ -308,32 +308,19 @@ func (app *MiyooPod) buildShuffleOrder(startIdx int) {
 	app.Queue.ShuffleOrder = order
 }
 
-func (app *MiyooPod) updateCoverflowForCurrentTrack() {
-	if app.Playing == nil || app.Playing.Track == nil {
+func (app *MiyooPod) updateCurrentAlbum() {
+	if app.Coverflow == nil {
 		return
 	}
-
-	track := app.Playing.Track
-
-	if app.Library != nil {
-		app.Coverflow.Albums = app.Library.Albums
+	app.Coverflow.CurrentAlbum = nil
+	if app.Playing == nil {
+		return
 	}
-
-	app.Coverflow.CenterIndex = -1
-	for i, album := range app.Coverflow.Albums {
-		if album.Name == track.Album && album.Artist == track.Artist {
-			app.Coverflow.CenterIndex = i
-			return
-		}
-		albumArtist := track.AlbumArtist
-		if albumArtist == "" {
-			albumArtist = track.Artist
-		}
-		if album.Name == track.Album && album.Artist == albumArtist {
-			app.Coverflow.CenterIndex = i
-			return
-		}
+	t := app.Playing.Track
+	if t == nil || t.NavSong != nil || app.LibScanRunning || app.Library == nil {
+		return
 	}
+	app.Coverflow.CurrentAlbum = app.Library.AlbumsByKey[t.albumArtistName()+"|"+t.Album]
 }
 
 // drawNowPlayingScreen renders the Now Playing screen with background caching.

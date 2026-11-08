@@ -404,19 +404,11 @@ func AllThemes() []Theme {
 	}
 }
 
-// Coverflow constants (at 640x480 native resolution)
+// Now Playing cover dimensions at native resolution.
 const (
 	COVER_CENTER_SIZE = 200
-	COVER_SIDE_SIZE   = 140
-	COVER_FAR_SIZE    = 100
 	COVER_CENTER_Y    = 95
 	COVER_CENTER_X    = 30
-	COVER_SIDE_OFFSET = 170
-	COVER_SIDE_Y      = 100
-	COVER_FAR_OFFSET  = 290
-	COVER_FAR_Y       = 110
-	REFLECT_HEIGHT    = 60
-	VISIBLE_COVERS    = 5
 )
 
 // --- Playback state ---
@@ -471,6 +463,13 @@ type Track struct {
 	Bitrate     int           `json:"bitrate,omitempty"`
 	SampleRate  int           `json:"sample_rate,omitempty"`
 	Lyrics      string        `json:"lyrics,omitempty"`
+}
+
+func (t *Track) albumArtistName() string {
+	if t.AlbumArtist != "" {
+		return t.AlbumArtist
+	}
+	return t.Artist
 }
 
 type Album struct {
@@ -557,15 +556,15 @@ func (s ScreenType) String() string {
 }
 
 type MenuItem struct {
-	IndexName   string
-	RemoteCover *navPreview
-	Label       string
-	HasSubmenu  bool
-	Action      func()
-	Submenu     *MenuScreen
-	Track       *Track
-	Album       *Album  // For album preview display
-	Artist      *Artist // For artist track queuing
+	IndexName    string
+	RemoteCover  *navPreview
+	Label        string
+	HasSubmenu   bool
+	Action       func()
+	Submenu      *MenuScreen
+	Track        *Track
+	Album        *Album   // For album preview display
+	ArtistTracks []*Track // Tracks to queue from a downloaded artist row
 }
 
 type MenuScreen struct {
@@ -597,8 +596,7 @@ type NowPlaying struct {
 // --- Coverflow state ---
 
 type CoverflowState struct {
-	Albums       []*Album
-	CenterIndex  int
+	CurrentAlbum *Album
 	CoverCache   map[string]image.Image
 	CoverCacheMu sync.Mutex
 }

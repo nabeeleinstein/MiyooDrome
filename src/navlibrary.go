@@ -92,17 +92,17 @@ func (app *MiyooPod) navArtistItem(parent *MenuScreen, artist navcore.Artist) *M
 	return &MenuItem{IndexName: artist.Name, Label: artist.Name, Submenu: sub, HasSubmenu: true}
 }
 
-func navAlbumPreview(dir string, album navcore.Album, offline bool) *navPreview {
+func navAlbumPreview(dir string, album navcore.Album) *navPreview {
 	id := album.CoverArt
 	if id == "" {
 		id = album.ID
 	}
-	return &navPreview{dir: dir, id: id, title: album.Name, artist: album.Artist, offline: offline}
+	return &navPreview{dir: dir, id: id, title: album.Name, artist: album.Artist}
 }
 
 func (app *MiyooPod) navAlbumItem(parent *MenuScreen, c *navcore.Client, album navcore.Album) *MenuItem {
 	dir := c.MusicDir(MUSIC_ROOT)
-	preview := navAlbumPreview(dir, album, false)
+	preview := navAlbumPreview(dir, album)
 	sub := &MenuScreen{Title: album.Name, Parent: parent, ReloadOnOpen: true, RemoteCover: preview}
 	sub.Builder = func() []*MenuItem {
 		ctx, cancel := navCtx()
@@ -148,7 +148,7 @@ func trackPreview(t *Track) navPreview {
 	if id == "" {
 		id = s.ID
 	}
-	return navPreview{dir: t.navDir(), id: id, title: t.Album, artist: t.Artist, offline: t.Offline}
+	return navPreview{dir: t.navDir(), id: id, title: t.Album, artist: t.Artist}
 }
 
 func (app *MiyooPod) navPlayArtist(c *navcore.Client, artist navcore.Artist, albums []navcore.Album, shuffle bool) {

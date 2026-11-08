@@ -12,11 +12,9 @@ import (
 
 type navPreview struct {
 	dir, id, title, artist string
-	offline                bool
 }
 type navArtKey struct {
 	dir, id string
-	offline bool
 }
 type navArtImage struct {
 	key          navArtKey
@@ -38,7 +36,7 @@ const navPreviewSize = 160
 
 func (app *MiyooPod) drawNavCover(p navPreview, x, y, size int) {
 	state := &app.navArtwork
-	key := navArtKey{p.dir, p.id, p.offline}
+	key := navArtKey{p.dir, p.id}
 	for _, cached := range state.cache {
 		if cached.key != key {
 			continue

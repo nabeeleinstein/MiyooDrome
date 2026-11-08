@@ -262,31 +262,27 @@ func (app *MiyooPod) handleMenuKey(key Key) {
 		}
 		item := current.Items[current.SelIndex]
 		before := len(app.Queue.Tracks)
-		if item.Track != nil {
-			app.addToQueue(item.Track)
-		} else if item.Album != nil {
-			// Add all album tracks
-			for _, track := range item.Album.Tracks {
-				app.addToQueue(track)
-			}
-		} else if item.Artist != nil {
-			// Add all tracks from all albums by this artist
-			for _, album := range item.Artist.Albums {
-				for _, track := range album.Tracks {
-					app.addToQueue(track)
-				}
-			}
+		tracks := item.ArtistTracks
+		switch {
+		case item.Track != nil:
+			tracks = []*Track{item.Track}
+		case item.Album != nil:
+			tracks = item.Album.Tracks
 		}
-		if item.Track != nil || item.Artist != nil || item.Album != nil {
-			added := len(app.Queue.Tracks) - before
-			switch {
-			case added == 0:
-				app.notify("Already in queue")
-			case added == 1 && item.Track != nil:
-				app.notify("Queued: " + item.Track.Title)
-			default:
-				app.notify(fmt.Sprintf("Added to queue: %d", added))
-			}
+		if len(tracks) == 0 {
+			return
+		}
+		for _, track := range tracks {
+			app.addToQueue(track)
+		}
+		added := len(app.Queue.Tracks) - before
+		switch {
+		case added == 0:
+			app.notify("Already in queue")
+		case added == 1 && item.Track != nil:
+			app.notify("Queued: " + item.Track.Title)
+		default:
+			app.notify(fmt.Sprintf("Added to queue: %d", added))
 		}
 	}
 	app.drawCurrentScreen()

@@ -30,8 +30,6 @@ func (item *MenuItem) browseName() string {
 		return item.Track.Title
 	case item.Album != nil:
 		return item.Album.Name
-	case item.Artist != nil:
-		return item.Artist.Name
 	case item.RemoteCover != nil:
 		return item.RemoteCover.title
 	default:

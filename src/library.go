@@ -253,10 +253,7 @@ func (app *MiyooPod) scanTrack(path string, record navcore.SavedSong) {
 	app.Library.TracksByPath[path] = track
 
 	// Build album key
-	albumArtist := track.AlbumArtist
-	if albumArtist == "" {
-		albumArtist = track.Artist
-	}
+	albumArtist := track.albumArtistName()
 	albumKey := albumArtist + "|" + track.Album
 
 	// Register or get album
@@ -664,7 +661,7 @@ func (app *MiyooPod) handleLibraryScanKey(key Key) {
 	case B, MENU:
 		if app.LibScanDone {
 			app.LibScanDone = false
-			app.updateCoverflowForCurrentTrack()
+			app.updateCurrentAlbum()
 			app.NPCacheDirty = true
 			app.setScreen(ScreenMenu)
 			app.drawCurrentScreen()
@@ -756,10 +753,7 @@ func (app *MiyooPod) loadLibraryJSON() error {
 
 	// Rebuild track-album relationships and extract album art
 	for _, track := range lib.Tracks {
-		albumArtist := track.AlbumArtist
-		if albumArtist == "" {
-			albumArtist = track.Artist
-		}
+		albumArtist := track.albumArtistName()
 		albumKey := albumArtist + "|" + track.Album
 
 		if album, exists := lib.AlbumsByKey[albumKey]; exists {

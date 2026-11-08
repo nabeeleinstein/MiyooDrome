@@ -185,7 +185,7 @@ func (app *MiyooPod) restorePlaybackState() {
 		app.Playing.Position = ps.Position
 	}
 
-	app.updateCoverflowForCurrentTrack()
+	app.updateCurrentAlbum()
 	app.NPCacheDirty = true
 
 	logMsg(fmt.Sprintf("INFO: Restored playback state - %s at %.1fs (paused)", track.Title, ps.Position))

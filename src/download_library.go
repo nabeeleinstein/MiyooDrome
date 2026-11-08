@@ -43,10 +43,7 @@ func (app *MiyooPod) downloadLibrary(home *MenuScreen) []*MenuItem {
 		if a == nil {
 			a = &offlineAlbum{Album: Album{Name: t.Album, Artist: t.Artist}, preview: preview}
 			if t.NavSong == nil && app.Library != nil {
-				artist := t.AlbumArtist
-				if artist == "" {
-					artist = t.Artist
-				}
+				artist := t.albumArtistName()
 				if local := app.Library.AlbumsByKey[artist+"|"+t.Album]; local != nil {
 					a.Artist = local.Artist
 					a.ArtPath = local.ArtPath
@@ -59,7 +56,7 @@ func (app *MiyooPod) downloadLibrary(home *MenuScreen) []*MenuItem {
 	}
 	for i := range savedAlbums {
 		a := &savedAlbums[i]
-		albums[a.Dir+"\x00"+a.Album.ID] = &offlineAlbum{Album: Album{Name: a.Album.Name, Artist: a.Album.Artist}, saved: a, preview: navAlbumPreview(a.Dir, a.Album, true)}
+		albums[a.Dir+"\x00"+a.Album.ID] = &offlineAlbum{Album: Album{Name: a.Album.Name, Artist: a.Album.Artist}, saved: a, preview: navAlbumPreview(a.Dir, a.Album)}
 	}
 	for _, s := range saved {
 		t := navTracks(s.Dir, []navcore.Song{s.Song}, true)[0]
@@ -79,10 +76,7 @@ func (app *MiyooPod) downloadLibrary(home *MenuScreen) []*MenuItem {
 			if _, err := os.Stat(t.Path); err != nil {
 				continue
 			}
-			artist := t.AlbumArtist
-			if artist == "" {
-				artist = t.Artist
-			}
+			artist := t.albumArtistName()
 			add(t, "local\x00"+artist+"\x00"+t.Album, nil)
 		}
 	}
@@ -118,6 +112,7 @@ func (app *MiyooPod) downloadLibrary(home *MenuScreen) []*MenuItem {
 					return append(rows, app.buildTrackMenuItems(group)...)
 				})
 				item.IndexName = name
+				item.ArtistTracks = group
 				items = append(items, item)
 			}
 			sortBrowse(items)
