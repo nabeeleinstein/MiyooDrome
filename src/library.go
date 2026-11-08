@@ -62,7 +62,8 @@ func (app *MiyooPod) runLibraryScan(onComplete func()) {
 	for _, s := range savedTracks {
 		byPath[s.Path] = s
 	}
-	for _, root := range []string{MUSIC_ROOT, SHARED_MUSIC_DIR} {
+	// Browse the whole public library. Only this edition’s download records confer ownership.
+	for _, root := range []string{MUSIC_ROOT, CARD_MUSIC_DIR} {
 		filepath.Walk(root, func(path string, info os.FileInfo, err error) error {
 			if err != nil || !app.Running {
 				return nil

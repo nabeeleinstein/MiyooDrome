@@ -17,7 +17,7 @@ Under **Navidrome → Sign in**, **L** switches HTTP/HTTPS on the server field. 
 - Press **L2** while browsing to pause or resume the current song without leaving the list. On **Now Playing**, **A** also toggles playback. **Up** opens track details and controls. **B** returns to the song. Sign-in and search keep their own keyboard controls.
 - Press **Y** on a song for queue feedback. **R2** opens **Now Playing** from an unlocked app screen, including About and download progress. **B** returns.
 - Open **Downloaded library** for songs, artists and albums. To remove a complete album, open it and choose **Delete downloaded album**. Cancel is selected first. Tracks explicitly saved individually in this build stay available, as do tracks used by another saved album. To keep an individual song from an older album download, save the song with **X** before removing the album.
-- After copying your own music or playlists onto the card, choose **Settings → Rescan imported music**. Navidrome downloads and their artwork appear automatically when available.
+- Choose **Settings → Rescan imported music** to index MP3, FLAC, Ogg and M3U/M3U8 playlists throughout `Media/Music/`, including `Media/Music/MiyooDrome/` and nested artist or album folders. Find them under **Downloaded library**. The test app treats the stable player’s files as imported music. Navidrome downloads and their artwork appear automatically when available.
 
 The test player keeps settings, artwork, queues and temporary audio in its own app folder. Explicit downloads go in `Media/Music/MiyooDromeTest/`. To remove the test install, delete `App/MiyooDromeTest/`. You can keep the downloaded MP3s or delete the test music folder separately.
 

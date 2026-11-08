@@ -23,7 +23,8 @@ const SCREEN_HEIGHT = 480
 
 // Music source
 const appDataDir = "/mnt/SDCARD/App/" + appFolder + "/data"
-const SHARED_MUSIC_DIR = "/mnt/SDCARD/Media/Music/" + appFolder
+const CARD_MUSIC_DIR = "/mnt/SDCARD/Media/Music"
+const SHARED_MUSIC_DIR = CARD_MUSIC_DIR + "/" + appFolder
 const MUSIC_ROOT = appDataDir + "/music"
 const LIBRARY_JSON_PATH = appDataDir + "/library.json"
 const ARTWORK_DIR = appDataDir + "/artwork/"

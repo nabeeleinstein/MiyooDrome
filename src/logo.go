@@ -2,105 +2,90 @@ package main
 
 import (
 	"fmt"
+	"image/color"
 	"image/png"
 	"os"
 
 	"github.com/fogleman/gg"
 )
 
-// drawLogo draws the MiyooPod logo with the given theme colors
-// x, y: center position of the logo
-// scale: size multiplier (1.0 = original 249x330 size)
-// colorScreen: if true, colors the screen area with theme background color instead of black
-func (app *MiyooPod) drawLogo(x, y float64, scale float64, colorScreen bool) {
-	dc := app.DC
-
-	// Save current state
+// drawLogo draws a front-facing Miyoo Mini with a record and paired grooves
+// inspired by the Navidrome mark. Coordinates use a 64px launcher canvas.
+func drawLogo(dc *gg.Context, x, y, scale float64, accent string) {
 	dc.Push()
-
-	// Translate to center position
+	defer dc.Pop()
 	dc.Translate(x, y)
 	dc.Scale(scale, scale)
+	dc.Translate(-32, -32)
 
-	// Center the logo (original size is 249x330)
-	logoWidth := 249.0
-	logoHeight := 330.0
-	dc.Translate(-logoWidth/2, -logoHeight/2)
+	const ink = "#222437"
+	// A light rim keeps the silhouette visible against a dark Onion theme.
+	dc.DrawRoundedRectangle(9, 1, 46, 62, 7)
+	dc.SetHexColor("#f3efdf")
+	dc.Fill()
+	dc.DrawRoundedRectangle(10, 2, 44, 60, 6)
+	dc.SetHexColor(ink)
+	dc.Fill()
+	dc.DrawRoundedRectangle(11.5, 3.5, 41, 56.5, 4.8)
+	dc.SetHexColor("#e3dfcd")
+	dc.Fill()
 
-	// Get theme colors
-	logoBodyColor := app.CurrentTheme.ItemTxt // Logo body uses text color
+	dc.DrawRoundedRectangle(13, 6, 38, 30, 3)
+	dc.SetHexColor(ink)
+	dc.Fill()
+	dc.DrawRoundedRectangle(15, 8, 34, 26, 1.8)
+	display := gg.NewLinearGradient(15, 8, 49, 34)
+	display.AddColorStop(0, color.NRGBA{R: 23, G: 31, B: 71, A: 255})
+	display.AddColorStop(1, color.NRGBA{R: 56, G: 33, B: 89, A: 255})
+	dc.SetFillStyle(display)
+	dc.Fill()
 
-	// Button and screen colors for proper contrast
-	var screenColor, buttonColor string
-	if colorScreen {
-		// For icon: screen uses theme BG, buttons use theme BG (same as screen)
-		screenColor = app.CurrentTheme.BG
-		buttonColor = app.CurrentTheme.BG
-	} else {
-		// For splash: screen uses theme BG (not black), buttons use theme BG
-		screenColor = app.CurrentTheme.BG
-		buttonColor = app.CurrentTheme.BG
+	// Vinyl face, opposite groove arcs and spindle, simplified for a 24px display.
+	dc.DrawCircle(32, 21, 11.3)
+	dc.SetHexColor("#60e2e0")
+	dc.Fill()
+	dc.DrawCircle(32, 21, 9.7)
+	dc.SetHexColor("#303055")
+	dc.Fill()
+	dc.SetHexColor("#99faf0")
+	dc.SetLineWidth(1.45 * scale)
+	dc.SetLineCapRound()
+	dc.DrawArc(32, 21, 7.5, 3.31, 4.82)
+	dc.Stroke()
+	dc.SetHexColor("#ff9ad6")
+	dc.DrawArc(32, 21, 7.5, 0.17, 1.68)
+	dc.Stroke()
+	dc.DrawCircle(32, 21, 4.25)
+	dc.SetHexColor("#c1b1ff")
+	dc.Fill()
+	dc.DrawCircle(32, 21, 1.45)
+	dc.SetHexColor(ink)
+	dc.Fill()
+
+	// D-pad, face buttons, and the two small function keys.
+	dc.DrawRoundedRectangle(17, 42, 12, 4.8, 1)
+	dc.DrawRoundedRectangle(20.6, 38.4, 4.8, 12, 1)
+	dc.SetHexColor(ink)
+	dc.Fill()
+	for _, p := range [][2]float64{{40, 40}, {44.6, 44.4}, {35.4, 44.4}, {40, 48.8}} {
+		dc.DrawCircle(p[0], p[1], 2.55)
+		dc.SetHexColor("#80374c")
+		dc.Fill()
 	}
-
-	// Main body (rounded rectangle) - use theme text color
-	dc.DrawRoundedRectangle(0, 0, logoWidth, logoHeight, 40)
-	dc.SetHexColor(logoBodyColor)
+	dc.SetHexColor("#797579")
+	dc.DrawRoundedRectangle(25, 54, 5.1, 1.9, .9)
+	dc.DrawRoundedRectangle(33, 54, 5.1, 1.9, .9)
 	dc.Fill()
-
-	// Screen area (rectangle with rounded corners)
-	dc.DrawRoundedRectangle(24, 23, 201, 132, 20)
-	dc.SetHexColor(screenColor)
+	dc.DrawCircle(48, 4.8, .85)
+	dc.SetHexColor(accent)
 	dc.Fill()
-
-	// Play button (triangle) - matches screen color for contrast with body
-	dc.SetHexColor(buttonColor)
-	dc.MoveTo(37.875, 184.167)
-	dc.LineTo(110.062, 242.5)
-	dc.LineTo(37.875, 300.833)
-	dc.ClosePath()
-	dc.Fill()
-
-	// Pause button (two bars) - matches screen color for contrast with body
-	dc.SetHexColor(buttonColor)
-	dc.DrawRectangle(138.938, 184.167, 28.874, 116.666)
-	dc.Fill()
-
-	dc.DrawRectangle(182.25, 184.167, 28.875, 116.666)
-	dc.Fill()
-
-	// Restore state
-	dc.Pop()
 }
 
-// generateIconPNG creates a 64x64 icon PNG with the current theme colors
+// generateIconPNG writes the same mark used by the launcher and splash.
 func (app *MiyooPod) generateIconPNG() error {
-	// Create a new context for the icon
-	iconSize := 64
+	const iconSize = 64
 	iconDC := gg.NewContext(iconSize, iconSize)
-
-	// Clear with transparent background
-	iconDC.SetRGBA(0, 0, 0, 0)
-	iconDC.Clear()
-
-	// Draw white border
-	borderWidth := 2.0
-	iconDC.SetRGB(1, 1, 1) // White
-	iconDC.DrawRoundedRectangle(0, 0, float64(iconSize), float64(iconSize), 8)
-	iconDC.Fill()
-
-	// Create a temporary app-like struct to use drawLogo
-	// We'll draw directly on the icon context
-	originalDC := app.DC
-	app.DC = iconDC
-
-	// Draw the logo centered in the icon, scaled down to fit (with padding for border)
-	// Original logo is 249x330, we want to fit in 64x64 with border
-	// Scale factor accounts for border padding
-	scale := (float64(iconSize) - borderWidth*4) / 330.0
-	app.drawLogo(float64(iconSize)/2, float64(iconSize)/2, scale, true)
-
-	// Restore original context
-	app.DC = originalDC
+	drawLogo(iconDC, 32, 32, 1, app.CurrentTheme.Accent)
 
 	// Ensure assets directory exists
 	assetsDir := "./assets"
@@ -132,8 +117,7 @@ func (app *MiyooPod) drawLogoSplash() {
 	app.DC.Clear()
 
 	// Draw the logo in the upper portion
-	logoScale := 0.6 // Scale down to ~150px width
-	app.drawLogo(SCREEN_WIDTH/2, SCREEN_HEIGHT/2-60, logoScale, false)
+	drawLogo(app.DC, SCREEN_WIDTH/2, SCREEN_HEIGHT/2-60, 3.2, app.CurrentTheme.Accent)
 
 	// Draw "MiyooDrome" title below the logo
 	app.DC.SetFontFace(app.FontTitle)

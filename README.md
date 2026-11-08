@@ -14,7 +14,7 @@ Pushes to the `test` branch produce a **MiyooDromeTest-OnionOS** install ZIP. It
 
 The [installation guide](INSTALL.md) covers keyboard controls, HTTPS, offline use and troubleshooting.
 
-In the test app, **Downloaded library** groups songs, albums, artists and imported playlists. New downloads appear immediately. Use **Settings → Rescan imported music** after copying music to the player’s music folder.
+In the test app, **Downloaded library** groups songs, albums, artists and imported playlists. New downloads appear immediately. Use **Settings → Rescan imported music** to scan MP3, FLAC and Ogg files anywhere under the SD card’s `Media/Music/` folder, including downloads from the stable player.
 
 ## Playback and storage (test branch)
 
